@@ -20,8 +20,10 @@ import {
   X,
   ExternalLink,
   ShieldAlert,
+  TrendingUp,
 } from "lucide-react";
 import { formatFriendlyIst } from "../lib/formatTime";
+import { AnalyticsView } from "../components/AnalyticsView";
 
 export const WardenDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -29,7 +31,7 @@ export const WardenDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const isChief = user?.role === "CHIEF_WARDEN" || user?.role === "ADMIN";
 
-  const [activeTab, setActiveTab] = useState<"tickets" | "schedules" | "disputes">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "schedules" | "disputes" | "analytics">("tickets");
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
   const [page, setPage] = useState(1);
@@ -176,6 +178,18 @@ export const WardenDashboard: React.FC = () => {
           >
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>Disputes &amp; Arbitrations</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+              activeTab === "analytics"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>Analytics &amp; Performance</span>
           </button>
         </div>
 
@@ -470,6 +484,16 @@ export const WardenDashboard: React.FC = () => {
               )}
             </div>
           </div>
+        ) : activeTab === "analytics" ? (
+          /* =========================================================================
+              ANALYTICS & PERFORMANCE TAB
+              ========================================================================= */
+          <AnalyticsView
+            onSelectStaff={(staffId) => {
+              setSelectedStaffId(staffId);
+              setActiveTab("schedules");
+            }}
+          />
         ) : (
           /* =========================================================================
               DISPUTES & ARBITRATIONS TAB

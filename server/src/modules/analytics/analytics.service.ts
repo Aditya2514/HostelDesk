@@ -161,11 +161,17 @@ export class AnalyticsService {
       ? Math.round((syntheticWindowTickets / totalWindowTickets) * 1000) / 1000
       : 0;
 
+    const blocks = await prisma.block.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+
     return {
       windowDays: days,
       scope: {
         blockId: scope.blockId ?? null,
       },
+      blocks,
       openTicketsCount: totalOpenCount,
       openTicketsByStatus,
       openTicketsByCategory: openByCategoryRaw,

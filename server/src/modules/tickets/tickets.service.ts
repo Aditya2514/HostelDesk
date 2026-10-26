@@ -442,14 +442,37 @@ export class TicketsService {
       throw new AppError(403, "FORBIDDEN", "Only wardens can change ticket priority");
     }
 
+    if (!OPEN_STATUSES.includes(ticket.status)) {
+      throw new AppError(
+        400,
+        "TICKET_NOT_OPEN",
+        `Cannot change priority on ticket with status ${ticket.status}. Priority can only be changed on open tickets.`
+      );
+    }
+
+    if (ticket.priority === priority) {
+      throw new AppError(
+        400,
+        "PRIORITY_UNCHANGED",
+        `Ticket already has priority ${priority}`
+      );
+    }
+
     const now = clock.now();
 
     return await prisma.$transaction(async (tx) => {
       // Note: dueAt stays category-based per domain rule 5.2
-      const updated = await tx.ticket.update({
-        where: { id: ticketId },
+      const updated = await tx.ticket.updateMany({
+        where: {
+          id: ticketId,
+          status: ticket.status,
+        },
         data: { priority },
       });
+
+      if (updated.count === 0) {
+        throw new AppError(409, "TICKET_CHANGED", "This ticket was modified by another operation. Please refresh.");
+      }
 
       await tx.ticketEvent.create({
         data: {

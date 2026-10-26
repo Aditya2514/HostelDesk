@@ -346,4 +346,51 @@ describe("TicketsService Core Logic & Concurrency", () => {
       expect(ids).toEqual(["3-open-urgent", "2-open-normal", "4-open-low", "1-closed-urgent"]);
     });
   });
+
+  describe("updatePriority Validations", () => {
+    const mockWarden: AuthenticatedUser = {
+      id: "warden-1",
+      name: "Block Warden",
+      email: "warden.a@hosteldesk.dev",
+      role: Role.WARDEN,
+      blockId: "block-a",
+      isActive: true,
+    };
+
+    it("rejects priority change on closed tickets with 400 TICKET_NOT_OPEN", async () => {
+      vi.mocked(prisma.ticket.findUnique).mockResolvedValueOnce({
+        id: "t-closed",
+        blockId: "block-a",
+        status: TicketStatus.CLOSED,
+        priority: Priority.NORMAL,
+      } as any);
+
+      try {
+        await TicketsService.updatePriority("t-closed", Priority.URGENT, "Need urgent fix", mockWarden);
+        expect.fail("Should have thrown 400 TICKET_NOT_OPEN");
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(AppError);
+        expect(err.statusCode).toBe(400);
+        expect(err.code).toBe("TICKET_NOT_OPEN");
+      }
+    });
+
+    it("rejects priority change if new priority is identical to current priority", async () => {
+      vi.mocked(prisma.ticket.findUnique).mockResolvedValueOnce({
+        id: "t-open",
+        blockId: "block-a",
+        status: TicketStatus.ASSIGNED,
+        priority: Priority.URGENT,
+      } as any);
+
+      try {
+        await TicketsService.updatePriority("t-open", Priority.URGENT, "Already urgent", mockWarden);
+        expect.fail("Should have thrown 400 PRIORITY_UNCHANGED");
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(AppError);
+        expect(err.statusCode).toBe(400);
+        expect(err.code).toBe("PRIORITY_UNCHANGED");
+      }
+    });
+  });
 });

@@ -15,6 +15,7 @@ ticketRouter.post("/", requireRole(Role.STUDENT), TicketsController.create);
 ticketRouter.get("/", TicketsController.list);
 ticketRouter.get("/:id", TicketsController.getById);
 ticketRouter.get("/:id/events", TicketsController.getEvents);
+ticketRouter.get("/:id/eta-explanation", TicketsController.getEtaExplanation);
 
 // Follow common area ticket
 ticketRouter.post("/:id/follow", requireRole(Role.STUDENT), TicketsController.follow);

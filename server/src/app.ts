@@ -62,6 +62,10 @@ app.use("/api/notifications", notificationRouter);
 import { categoryRouter } from "./modules/categories/categories.routes";
 app.use("/api/categories", categoryRouter);
 
+// Staff routes
+import { staffRouter } from "./modules/staff/staff.routes";
+app.use("/api/staff", staffRouter);
+
 // Admin demo routes
 import { demoRouter } from "./modules/admin/demo.routes";
 app.use("/api/admin/demo", demoRouter);

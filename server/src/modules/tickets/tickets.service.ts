@@ -5,6 +5,9 @@ import { AppError } from "../../lib/errors";
 import { AuthenticatedUser } from "../../types/express";
 import { RoutingService } from "../scheduling/routing.service";
 import { EtaService } from "../scheduling/eta.service";
+import { getDurationEstimate, EstimateResult } from "../scheduling/estimator";
+import { simulateQueueRanges, JobDurationsInput, JobPriority } from "../scheduling/simulator";
+import { ShiftWindow } from "../scheduling/shifts";
 import { NotificationService } from "../notifications/notification.service";
 import { TicketAccessService } from "./ticketAccess.service";
 import { assertTransition } from "./stateMachine";
@@ -958,6 +961,9 @@ export class TicketsService {
         startedAt: true,
         resolvedAt: true,
         closedAt: true,
+        etaP50At: true,
+        etaP80At: true,
+        etaNotifiedP50At: true,
         createdAt: true,
         updatedAt: true,
         room: { select: { id: true, number: true, floor: true } },
@@ -1082,6 +1088,8 @@ export class TicketsService {
           startedAt: true,
           resolvedAt: true,
           closedAt: true,
+          etaP50At: true,
+          etaP80At: true,
           createdAt: true,
           updatedAt: true,
           category: { select: { id: true, name: true, trade: true } },
@@ -1135,6 +1143,166 @@ export class TicketsService {
         total,
         totalPages: Math.ceil(total / filters.limit),
       },
+    };
+  }
+
+  /**
+   * Returns ETA explanation details for a ticket.
+   * Privacy guarantee: jobsAhead includes ONLY { code, priority, estMinutes } without student/room identities.
+   */
+  static async getEtaExplanation(ticketId: string, user: AuthenticatedUser) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        category: true,
+        block: true,
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            trade: true,
+            shifts: {
+              select: {
+                weekday: true,
+                startMinute: true,
+                endMinute: true,
+              },
+            },
+          },
+        },
+        followers: { select: { userId: true } },
+      },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    TicketAccessService.assertCanView(user, ticket as any);
+
+    const estimate = await getDurationEstimate(ticket.categoryId, ticket.blockId);
+
+    let jobsAhead: Array<{ code: string; priority: Priority; estMinutes: number }> = [];
+    let shiftToday: {
+      startMinute: number;
+      endMinute: number;
+      startFormatted: string;
+      endFormatted: string;
+    } | null = null;
+
+    if (ticket.assignedTo) {
+      const staff = ticket.assignedTo;
+      const now = clock.now();
+      const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+      const currentWeekday = istDate.getUTCDay();
+
+      const todayShift = staff.shifts.find((s) => s.weekday === currentWeekday);
+      if (todayShift) {
+        const formatMin = (m: number) => {
+          const h = Math.floor(m / 60);
+          const min = m % 60;
+          const ampm = h >= 12 ? "PM" : "AM";
+          const dh = h % 12 || 12;
+          return `${dh}:${String(min).padStart(2, "0")} ${ampm}`;
+        };
+        shiftToday = {
+          startMinute: todayShift.startMinute,
+          endMinute: todayShift.endMinute,
+          startFormatted: formatMin(todayShift.startMinute),
+          endFormatted: formatMin(todayShift.endMinute),
+        };
+      }
+
+      // Load active tickets in staff member's open queue
+      const staffTickets = await prisma.ticket.findMany({
+        where: {
+          assignedToId: staff.id,
+          status: { in: OPEN_STATUSES },
+        },
+        select: {
+          id: true,
+          code: true,
+          categoryId: true,
+          blockId: true,
+          priority: true,
+          status: true,
+          createdAt: true,
+          startedAt: true,
+          preferredSlotStart: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const estCache = new Map<string, EstimateResult>();
+      const simJobs: JobDurationsInput[] = await Promise.all(
+        staffTickets.map(async (st) => {
+          const cacheKey = `${st.categoryId}:${st.blockId}`;
+          let est = estCache.get(cacheKey);
+          if (!est) {
+            est = await getDurationEstimate(st.categoryId, st.blockId);
+            estCache.set(cacheKey, est);
+          }
+          return {
+            ticketId: st.id,
+            priority: st.priority as JobPriority,
+            createdAt: st.createdAt,
+            status: st.status,
+            startedAt: st.startedAt,
+            notBefore: st.preferredSlotStart,
+            p50Minutes: est.p50Minutes,
+            p80Minutes: est.p80Minutes,
+          };
+        })
+      );
+
+      const { p50Schedule } = simulateQueueRanges({
+        now,
+        shifts: staff.shifts as ShiftWindow[],
+        jobs: simJobs,
+      });
+
+      const thisSched = p50Schedule.get(ticket.id);
+      if (thisSched) {
+        for (const st of staffTickets) {
+          if (st.id === ticket.id) continue;
+          const sched = p50Schedule.get(st.id);
+          if (sched && sched.startAt.getTime() < thisSched.startAt.getTime()) {
+            const est = estCache.get(`${st.categoryId}:${st.blockId}`);
+            jobsAhead.push({
+              code: st.code,
+              priority: st.priority,
+              estMinutes: est ? est.p50Minutes : 45,
+            });
+          }
+        }
+      }
+    }
+
+    const history = await prisma.ticketPrediction.findMany({
+      where: { ticketId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        predictedP50At: true,
+        predictedP80At: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      assignee: ticket.assignedTo
+        ? {
+            id: ticket.assignedTo.id,
+            name: ticket.assignedTo.name,
+            trade: ticket.assignedTo.trade,
+          }
+        : null,
+      estimate,
+      jobsAhead,
+      shiftToday,
+      etaP50At: ticket.etaP50At,
+      etaP80At: ticket.etaP80At,
+      history,
     };
   }
 }

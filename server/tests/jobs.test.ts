@@ -1,7 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
 import { env } from "../src/config/env";
+import { EtaService } from "../src/modules/scheduling/eta.service";
+
+vi.mock("../src/modules/scheduling/eta.service", () => ({
+  EtaService: {
+    recomputeAllStaffQueues: vi.fn().mockResolvedValue({ recomputedStaffCount: 10 }),
+    recomputeStaffQueue: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 describe("Jobs Tick Endpoint (POST /api/jobs/tick)", () => {
   it("returns 401 when x-jobs-secret header is missing", async () => {

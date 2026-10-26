@@ -158,4 +158,13 @@ export class TicketsController {
       next(error);
     }
   }
+
+  static async getEtaExplanation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const explanation = await TicketsService.getEtaExplanation(req.params.id, req.user!);
+      res.status(200).json(explanation);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -23,28 +23,23 @@ export async function uploadToCloudinary(
   folder: string,
   filename?: string
 ): Promise<CloudinaryUploadResult> {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "image",
-        public_id: filename,
-      },
-      (error, result) => {
-        if (error || !result) {
-          console.error("[Cloudinary] upload_stream error:", error);
-          return reject(error || new Error("Cloudinary upload failed"));
-        }
-        resolve({
-          publicId: result.public_id,
-          url: result.secure_url,
-          format: result.format,
-          bytes: result.bytes,
-        });
-      }
-    );
-    uploadStream.end(buffer);
-  });
+  try {
+    const dataUri = `data:image/png;base64,${buffer.toString("base64")}`;
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder,
+      resource_type: "image",
+      public_id: filename,
+    });
+    return {
+      publicId: result.public_id,
+      url: result.secure_url,
+      format: result.format,
+      bytes: result.bytes,
+    };
+  } catch (error) {
+    console.error("[Cloudinary] upload error:", error);
+    throw error;
+  }
 }
 
 /**

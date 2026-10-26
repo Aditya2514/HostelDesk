@@ -10,7 +10,8 @@ This guide provides step-by-step instructions for deploying the HostelDesk monor
 2. Create a new project:
    - **Project Name**: `hosteldesk`
    - **Postgres version**: `16` or `17`
-   - **Region**: Choose the closest region to your backend (e.g. `US East (Ohio)` or `Asia-Pacific (Singapore)`).
+   - **Region**: `AWS Asia Pacific (Singapore)`. Use the **same region** for Render, so every query doesn't cross an ocean.
+   - **Branches**: keep `main` for production and create a `dev` branch for local development and the agent's tests, so test data never reaches the deployed app.
 3. In your Neon Project Dashboard, navigate to the **Connection Details** widget:
    - **Pooled Connection String (`DATABASE_URL`)**:
      - Toggle the switch: **"Connection pooling" (Checked/Enabled)**.
@@ -31,34 +32,36 @@ This guide provides step-by-step instructions for deploying the HostelDesk monor
 2. Connect your GitHub repository: `HostelDesk`.
 3. Configure the web service:
    - **Name**: `hosteldesk-server`
-   - **Region**: Match or be close to your Neon database region
+   - **Region**: `Singapore` (same as Neon)
    - **Branch**: `main`
    - **Root Directory**: `server`
    - **Runtime**: `Node`
    - **Build Command**:
      ```bash
-     npm install && npm run build
+     npm ci --include=dev && npm run build
      ```
    - **Start Command**:
      ```bash
      npx prisma migrate deploy && npm start
      ```
      *(This ensures all pending Prisma migrations run automatically on each deployment before starting the web server).*
+   - *Why `--include=dev`:* with `NODE_ENV=production` set, a plain `npm install` skips `devDependencies`, which include TypeScript and the Prisma CLI. The build would then fail with `tsc: not found`.
 4. Add the following **Environment Variables** in Render:
    | Variable | Value / Description |
    |---|---|
    | `NODE_ENV` | `production` |
-   | `PORT` | `4000` (Render will map to port automatically) |
-   | `DATABASE_URL` | Neon **Pooled** connection string |
-   | `DIRECT_URL` | Neon **Direct** connection string |
-   | `JWT_SECRET` | Strong random string (min 32 characters, e.g. `openssl rand -hex 32`) |
+   | `DATABASE_URL` | Neon **Pooled** connection string of the **`main`** branch |
+   | `DIRECT_URL` | Neon **Direct** connection string of the **`main`** branch |
+   | `JWT_SECRET` | Strong random string (min 32 characters, e.g. `openssl rand -hex 32`). Use a **different** value from your local `.env`. |
    | `CLIENT_ORIGIN` | Your production Vercel URL (e.g. `https://hosteldesk.vercel.app`) |
    | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
    | `CLOUDINARY_API_KEY` | Cloudinary API Key |
    | `CLOUDINARY_API_SECRET` | Cloudinary API Secret |
    | `JOBS_SECRET` | Random token for cron trigger (e.g. `openssl rand -hex 16`) |
    | `DEMO_MODE` | `true` (enables time-travel and demo accounts panel for project presentation) |
+   Render sets `PORT` itself; don't add it.
 5. Click **Create Web Service** and wait for deployment.
+6. Note the service URL Render gives you. If it is **not** exactly `https://hosteldesk-server.onrender.com` (Render adds a suffix when a name is taken), update the destination in `client/vercel.json` to match **before** deploying the frontend; otherwise every API call from the deployed site fails.
 
 ---
 
@@ -68,9 +71,11 @@ Once Render finishes the initial deployment and migrations:
 1. From your local development machine with connection to the database (or via Render's Web Shell):
    ```bash
    cd server
-   DATABASE_URL="<your-neon-pooled-url>" DIRECT_URL="<your-neon-direct-url>" npx prisma db seed
+   DATABASE_URL="<main-branch-pooled-url>" DIRECT_URL="<main-branch-direct-url>" npx prisma db seed
+   DATABASE_URL="<main-branch-pooled-url>" DIRECT_URL="<main-branch-direct-url>" npm run seed:history
    ```
-2. The seed script is completely **idempotent** (safe to run multiple times). It initializes:
+   Double-check you're using the **`main`** branch strings, not `dev`.
+2. The seed script is **idempotent** (safe to run twice), but it deletes and recreates room occupancies, so **don't re-run it on production once real people use the app**. It initializes:
    - Blocks A, B, and C
    - 120 rooms (10 per floor across 4 floors)
    - 10 category SLAs & durations
@@ -98,6 +103,7 @@ Once Render finishes the initial deployment and migrations:
    - `client/vercel.json` contains a rewrite rule forwarding `/api/(.*)` directly to your Render backend (`https://hosteldesk-server.onrender.com/api/$1`) before the SPA fallback rewrite.
    - *Why:* This allows the browser to communicate with the API on the exact same origin as the frontend. The `token` authentication cookie is treated as **first-party (`SameSite=Lax`)**, completely bypassing Safari / iOS Intelligent Tracking Prevention (ITP) that would otherwise block third-party cookies on iPhone devices.
 6. Click **Deploy**. All client-side routes (`/student`, `/staff`, `/warden`, `/admin`) rewrite to `index.html`.
+7. Copy the Vercel URL (e.g. `https://hosteldesk.vercel.app`) into Render's `CLIENT_ORIGIN` environment variable and redeploy the Render service.
 
 ---
 
@@ -111,7 +117,7 @@ Render's free tier spins down after 15 minutes of inactivity. HostelDesk uses an
 1. Sign up / log in to [cron-job.org](https://cron-job.org).
 2. Click **Create Cronjob**:
    - **Title**: `HostelDesk Tick & Keep-Awake`
-   - **URL**: `https://<your-render-app>.onrender.com/api/jobs/tick`
+   - **URL**: `https://<your-render-app>.onrender.com/api/jobs/tick` (call Render **directly**, not through the Vercel URL: only direct traffic keeps the Render instance awake)
    - **Request Method**: `POST`
    - **Schedule**: Every 5 minutes (`*/5 * * * *`)
 3. Under **Headers**, add a custom header:
@@ -126,3 +132,9 @@ Render's free tier spins down after 15 minutes of inactivity. HostelDesk uses an
 > [!TIP]
 > **Before recording your demonstration:**
 > If you haven't accessed the app in a few hours, open the site once in your browser 1–2 minutes before the presentation. This ensures the free Render backend instance is warm and responds with sub-second latency during your presentation.
+
+- [ ] Open the Vercel URL in an **incognito** window and log in as `student1@hosteldesk.dev` / `Demo@1234`
+- [ ] Raise a ticket and check it shows an assignee and an ETA
+- [ ] Log out and log in as `warden.a@hosteldesk.dev`: the student's data must not appear
+- [ ] If possible, log in once from an iPhone (Safari) to confirm the cookie works
+- [ ] cron-job.org shows recent successful (200) runs

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { User, Role } from "../types/auth";
-import { api } from "../lib/api";
+import { api, SESSION_EXPIRED_EVENT } from "../lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +33,7 @@ export function getDashboardRoute(role?: Role): string {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
 
   const refreshUser = useCallback(async () => {
     try {
@@ -48,8 +50,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser();
   }, [refreshUser]);
 
+  // Cached query data belongs to the user who fetched it. Without clearing it, switching
+  // accounts in the same browser (e.g. student -> warden during a demo) briefly shows the
+  // previous user's tickets and notifications.
+  const clearSession = useCallback(() => {
+    queryClient.clear();
+    setUser(null);
+  }, [queryClient]);
+
+  useEffect(() => {
+    window.addEventListener(SESSION_EXPIRED_EVENT, clearSession);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, clearSession);
+  }, [clearSession]);
+
   const login = async (email: string, password: string): Promise<User> => {
     const data = await api.post<{ user: User }>("/api/auth/login", { email, password });
+    queryClient.clear();
     setUser(data.user);
     return data.user;
   };
@@ -58,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.post("/api/auth/logout");
     } finally {
-      setUser(null);
+      clearSession();
     }
   };
 

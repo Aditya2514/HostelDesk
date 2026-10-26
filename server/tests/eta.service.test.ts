@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { EtaService, formatIstTime } from "../src/modules/scheduling/eta.service";
+import { EtaService, formatIstTime, studentDelayReason } from "../src/modules/scheduling/eta.service";
 import { prisma } from "../src/lib/prisma";
 import { clock } from "../src/lib/clock";
 import { TicketStatus, Priority } from "@prisma/client";
@@ -65,11 +65,12 @@ describe("EtaService & Recompute Queue", () => {
 
     vi.mocked(prisma.ticket.findMany).mockResolvedValue([onHoldTicket] as any);
 
-    await EtaService.recomputeStaffQueue("staff-1", "paused");
+    await EtaService.recomputeStaffQueue("staff-1", "TICK");
 
+    // The notified baseline is cleared too, so resuming doesn't trigger a "delayed" message
     expect(prisma.ticket.update).toHaveBeenCalledWith({
       where: { id: "ticket-hold" },
-      data: { etaP50At: null, etaP80At: null },
+      data: { etaP50At: null, etaP80At: null, etaNotifiedP50At: null },
     });
   });
 
@@ -107,14 +108,14 @@ describe("EtaService & Recompute Queue", () => {
 
     vi.mocked(prisma.ticket.findMany).mockResolvedValue([activeTicket] as any);
 
-    await EtaService.recomputeStaffQueue("staff-1", "an urgent issue was added ahead");
+    await EtaService.recomputeStaffQueue("staff-1", "NEW_TICKET", undefined, "some-other-ticket");
 
     // Notification should be sent to audience
     expect(NotificationService.notify).toHaveBeenCalledTimes(1);
     const notifyCall = vi.mocked(NotificationService.notify).mock.calls[0];
     expect(notifyCall[1].type).toBe("ETA_DELAYED");
     expect(notifyCall[1].message).toContain("Fan Repair fix is delayed");
-    expect(notifyCall[1].message).toContain("an urgent issue was added ahead");
+    expect(notifyCall[1].message).toContain("a more urgent issue was added ahead of yours");
 
     // Prediction row should also be recorded (change > 5 min)
     expect(prisma.ticketPrediction.create).toHaveBeenCalledTimes(1);
@@ -153,7 +154,7 @@ describe("EtaService & Recompute Queue", () => {
 
     vi.mocked(prisma.ticket.findMany).mockResolvedValue([ticketUnchanged] as any);
 
-    await EtaService.recomputeStaffQueue("staff-1", "tick");
+    await EtaService.recomputeStaffQueue("staff-1", "TICK");
 
     // No prediction spam
     expect(prisma.ticketPrediction.create).not.toHaveBeenCalled();
@@ -161,5 +162,50 @@ describe("EtaService & Recompute Queue", () => {
     expect(NotificationService.notify).not.toHaveBeenCalled();
     // No ticket update needed
     expect(prisma.ticket.update).not.toHaveBeenCalled();
+  });
+
+  it("saves the notified baseline even when the stored ETA moved by 5 minutes or less (no repeated delay messages)", async () => {
+    // Regression: the ETA drifted in small steps, so etaP50At (10:57 IST) is already close to the
+    // new ETA (11:00 IST), but the last ETA the student was told about is 10:15 IST.
+    // A delay message must be sent once AND the baseline saved; otherwise every tick re-sends it.
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "staff-1",
+      shifts: [{ weekday: 1, startMinute: 540, endMinute: 1080 }],
+    } as any);
+    vi.spyOn(estimatorModule, "getDurationEstimate").mockResolvedValue({
+      p50Minutes: 60, p80Minutes: 90, n: 10, observedMedian: 60, observedP80: 90, scope: "BLOCK", defaultDuration: 60,
+    });
+
+    const driftedTicket = {
+      id: "ticket-drifted",
+      status: TicketStatus.ASSIGNED,
+      priority: Priority.NORMAL,
+      createdAt: new Date("2026-10-26T03:00:00.000Z"),
+      categoryId: "cat-1",
+      blockId: "block-a",
+      etaP50At: new Date("2026-10-26T05:27:00.000Z"), // 10:57 IST (3 min from new ETA)
+      etaP80At: new Date("2026-10-26T05:57:00.000Z"),
+      etaNotifiedP50At: new Date("2026-10-26T04:45:00.000Z"), // 10:15 IST
+      category: { id: "cat-1", name: "Fan Repair", defaultDurationMin: 60 },
+    };
+    vi.mocked(prisma.ticket.findMany).mockResolvedValue([driftedTicket] as any);
+
+    await EtaService.recomputeStaffQueue("staff-1", "TICK");
+
+    expect(NotificationService.notify).toHaveBeenCalledTimes(1);
+    expect(prisma.ticket.update).toHaveBeenCalledWith({
+      where: { id: "ticket-drifted" },
+      data: { etaNotifiedP50At: new Date("2026-10-26T05:30:00.000Z") },
+    });
+    expect(prisma.ticketPrediction.create).not.toHaveBeenCalled();
+  });
+
+  it("chooses student-facing delay reasons from reason codes, not keywords", () => {
+    expect(studentDelayReason("PRIORITY_CHANGED", false)).toBe("a more urgent issue was moved ahead of yours");
+    expect(studentDelayReason("PRIORITY_CHANGED", true)).toBe("the warden changed your ticket's priority");
+    expect(studentDelayReason("NEW_TICKET", false)).toBe("a more urgent issue was added ahead of yours");
+    expect(studentDelayReason("REASSIGNED_IN", true)).toBe("your ticket was moved to a different staff member's queue");
+    expect(studentDelayReason("TICK", false)).toBe("the staff member's current job is taking longer than expected");
+    expect(studentDelayReason("REJECTED", false)).toBe("the staff member's schedule changed");
   });
 });

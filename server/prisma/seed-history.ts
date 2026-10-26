@@ -200,6 +200,10 @@ async function main() {
     if (shouldBreach) {
       if (resolvedAt.getTime() <= dueAt.getTime()) {
         const extraDelayMs = (dueAt.getTime() - resolvedAt.getTime()) + (20 + Math.floor(rng() * 40)) * 60 * 1000;
+        // Breaches come from a late START (the job waited too long in the queue), so both
+        // timestamps move together and resolvedAt - startedAt still equals the work time.
+        // Moving only resolvedAt would make the job look longer than actualWorkMinutes.
+        startedAt = new Date(startedAt.getTime() + extraDelayMs);
         resolvedAt = new Date(resolvedAt.getTime() + extraDelayMs);
       }
     } else {
@@ -218,7 +222,7 @@ async function main() {
 
     // Resolution method mix: ~75% CODE, ~20% PHOTO, ~5% WARDEN
     const methodRand = rng();
-    let resolutionMethod = ResolutionMethod.CODE;
+    let resolutionMethod: ResolutionMethod = ResolutionMethod.CODE;
     if (methodRand > 0.95) {
       resolutionMethod = ResolutionMethod.WARDEN;
     } else if (methodRand > 0.75 || !isRoom) {
@@ -487,7 +491,7 @@ async function main() {
   // 6. Run recomputeStaffQueue for all staff members to populate live ETAs
   console.log("Recomputing live queues for all staff members...");
   for (const staff of allStaff) {
-    await EtaService.recomputeStaffQueue(staff.id, "initial synthetic queue setup", prisma);
+    await EtaService.recomputeStaffQueue(staff.id, "SEED", prisma);
   }
 
   const finalTotal = await prisma.ticket.count({ where: { isSynthetic: true } });

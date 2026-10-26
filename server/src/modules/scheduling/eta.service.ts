@@ -49,21 +49,44 @@ export function formatIstTime(date: Date, relativeTo: Date): string {
   return `${weekdayName} ${timeStr}`;
 }
 
-export function formatStudentFriendlyReason(internalReason: string): string {
-  const lower = internalReason.toLowerCase();
-  if (lower.includes("priority") || lower.includes("urgent")) {
-    return "an urgent issue was added ahead of yours";
+/**
+ * Why a staff member's queue is being recomputed.
+ * Using a fixed set of reason codes (instead of free text) means the message a student
+ * sees is chosen deliberately, not guessed from keywords in an internal string.
+ */
+export type EtaReason =
+  | "NEW_TICKET" // a new ticket was routed into this queue
+  | "ASSIGNED" // a warden manually assigned a ticket into this queue
+  | "REASSIGNED_IN" // a ticket was moved into this queue from another staff member
+  | "REASSIGNED_OUT" // a ticket was moved out of this queue
+  | "PRIORITY_CHANGED" // a warden changed a ticket's priority
+  | "WORK_STARTED" // the staff member started a job
+  | "REJECTED" // a ticket was rejected and left the queue
+  | "TICK" // periodic recompute: time passed, a job may be overrunning
+  | "SEED"; // synthetic data setup
+
+/**
+ * Turns a reason code into the explanation shown to the student whose ETA got later.
+ * `isTriggerTicket` is true when the delayed ticket is the one the change happened to.
+ */
+export function studentDelayReason(reason: EtaReason, isTriggerTicket: boolean): string {
+  switch (reason) {
+    case "PRIORITY_CHANGED":
+      return isTriggerTicket
+        ? "the warden changed your ticket's priority"
+        : "a more urgent issue was moved ahead of yours";
+    case "NEW_TICKET":
+    case "ASSIGNED":
+    case "REASSIGNED_IN":
+      return isTriggerTicket
+        ? "your ticket was moved to a different staff member's queue"
+        : "a more urgent issue was added ahead of yours";
+    case "WORK_STARTED":
+    case "TICK":
+      return "the staff member's current job is taking longer than expected";
+    default:
+      return "the staff member's schedule changed";
   }
-  if (lower.includes("reassign")) {
-    return "your ticket was moved to another staff member";
-  }
-  if (lower.includes("tick") || lower.includes("time") || lower.includes("started") || lower.includes("longer")) {
-    return "the staff member's previous job is taking longer than expected";
-  }
-  if (lower.includes("assigned") || lower.includes("new ticket")) {
-    return "a higher priority task was added ahead of yours";
-  }
-  return "the staff member's schedule was updated";
 }
 
 export class EtaService {
@@ -80,8 +103,9 @@ export class EtaService {
    */
   static async recomputeStaffQueue(
     staffId: string,
-    reason: string,
-    client: Prisma.TransactionClient | typeof defaultPrisma = defaultPrisma
+    reason: EtaReason,
+    client: Prisma.TransactionClient | typeof defaultPrisma = defaultPrisma,
+    triggerTicketId?: string
   ): Promise<void> {
     const staff = await client.user.findUnique({
       where: { id: staffId },
@@ -150,14 +174,18 @@ export class EtaService {
       (t) => t.status === TicketStatus.ON_HOLD || t.status === TicketStatus.AWAITING_ACCESS
     );
 
-    // 1. Clear ETAs for on-hold / awaiting-access tickets if currently set
+    // 1. Clear ETAs for on-hold / awaiting-access tickets if currently set.
+    //    The notified baseline is cleared too: the student was already told why work paused,
+    //    so when the ticket resumes its new ETA becomes a fresh baseline instead of
+    //    immediately triggering a "delayed" message.
     for (const ticket of pausedTickets) {
-      if (ticket.etaP50At !== null || ticket.etaP80At !== null) {
+      if (ticket.etaP50At !== null || ticket.etaP80At !== null || ticket.etaNotifiedP50At !== null) {
         await client.ticket.update({
           where: { id: ticket.id },
           data: {
             etaP50At: null,
             etaP80At: null,
+            etaNotifiedP50At: null,
           },
         });
       }
@@ -223,7 +251,7 @@ export class EtaService {
 
           if (delayMinutes > 30) {
             const timeStr = formatIstTime(newP50, now);
-            const studentReason = formatStudentFriendlyReason(reason);
+            const studentReason = studentDelayReason(reason, ticket.id === triggerTicketId);
             const audience = await NotificationService.getTicketAudience(ticket.id, undefined, client);
 
             await NotificationService.notify(
@@ -240,6 +268,9 @@ export class EtaService {
           }
         }
       }
+
+      const notifiedBaselineChanged =
+        (updatedNotifiedP50?.getTime() ?? null) !== (ticket.etaNotifiedP50At?.getTime() ?? null);
 
       // Log prediction and update ticket record only if changed by > 5 minutes (or initial set)
       if (p50ChangedSignificantly) {
@@ -264,13 +295,21 @@ export class EtaService {
           });
         }
       } else if (!newP50 && ticket.etaP50At) {
-        // Clear ETAs for on-hold or awaiting-access tickets
+        // Clear ETAs when the ticket can no longer be scheduled (e.g. beyond the 14-day window)
         await client.ticket.update({
           where: { id: ticket.id },
           data: {
             etaP50At: null,
             etaP80At: null,
           },
+        });
+      } else if (notifiedBaselineChanged) {
+        // A delay message was sent although the stored ETA moved by 5 minutes or less
+        // (small drifts accumulate between ticks). The baseline must still be saved,
+        // otherwise every following tick would send the same "delayed" message again.
+        await client.ticket.update({
+          where: { id: ticket.id },
+          data: { etaNotifiedP50At: updatedNotifiedP50 },
         });
       }
     }
@@ -280,7 +319,7 @@ export class EtaService {
    * Recomputes open queues for all active staff members with shifts.
    * Used by /api/jobs/tick.
    */
-  static async recomputeAllStaffQueues(reason: string): Promise<{ recomputedStaffCount: number }> {
+  static async recomputeAllStaffQueues(reason: EtaReason): Promise<{ recomputedStaffCount: number }> {
     const activeStaff = await defaultPrisma.user.findMany({
       where: {
         role: Role.STAFF,

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../lib/errors";
+import { clock } from "../../lib/clock";
 
 export class NotificationController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -51,7 +52,7 @@ export class NotificationController {
 
       await prisma.notification.update({
         where: { id },
-        data: { readAt: new Date() },
+        data: { readAt: clock.now() },
       });
 
       res.status(200).json({ success: true });
@@ -70,7 +71,7 @@ export class NotificationController {
           readAt: null,
         },
         data: {
-          readAt: new Date(),
+          readAt: clock.now(),
         },
       });
 

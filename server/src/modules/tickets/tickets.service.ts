@@ -4,7 +4,7 @@ import { clock } from "../../lib/clock";
 import { AppError } from "../../lib/errors";
 import { AuthenticatedUser } from "../../types/express";
 import { RoutingService } from "../scheduling/routing.service";
-import { EtaService } from "../scheduling/eta.service";
+import { EtaService, EtaReason } from "../scheduling/eta.service";
 import { getDurationEstimate, EstimateResult } from "../scheduling/estimator";
 import { simulateQueueRanges, JobDurationsInput, JobPriority } from "../scheduling/simulator";
 import { ShiftWindow } from "../scheduling/shifts";
@@ -28,9 +28,13 @@ export class TicketsService {
    * Safely recomputes staff queue after transaction commit, logging errors
    * without failing the parent request.
    */
-  private static async safeRecomputeStaffQueue(staffId: string, reason: string): Promise<void> {
+  private static async safeRecomputeStaffQueue(
+    staffId: string,
+    reason: EtaReason,
+    triggerTicketId?: string
+  ): Promise<void> {
     try {
-      await EtaService.recomputeStaffQueue(staffId, reason);
+      await EtaService.recomputeStaffQueue(staffId, reason, undefined, triggerTicketId);
     } catch (err) {
       console.error(`[EtaService] Post-commit queue recompute failed for staff ${staffId} (${reason}):`, err);
     }
@@ -311,7 +315,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (result.assignedToId) {
-      await this.safeRecomputeStaffQueue(result.assignedToId, "new ticket was assigned to your queue");
+      await this.safeRecomputeStaffQueue(result.assignedToId, "NEW_TICKET", result.id);
     }
 
     return result;
@@ -474,7 +478,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await this.safeRecomputeStaffQueue(ticket.assignedToId, "work started on site");
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "WORK_STARTED", ticketId);
     }
 
     return res;
@@ -562,10 +566,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await this.safeRecomputeStaffQueue(
-        ticket.assignedToId,
-        `ticket priority changed to ${priority}`
-      );
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "PRIORITY_CHANGED", ticketId);
     }
 
     return res;
@@ -675,9 +676,9 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ticket reassigned away from queue");
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "REASSIGNED_OUT", ticketId);
     }
-    await this.safeRecomputeStaffQueue(newStaffId, "ticket reassigned to queue");
+    await this.safeRecomputeStaffQueue(newStaffId, "REASSIGNED_IN", ticketId);
 
     return res;
   }
@@ -778,7 +779,7 @@ export class TicketsService {
       return { success: true, status: TicketStatus.ASSIGNED, assignedToId: staffId };
     }, TX_OPTIONS);
 
-    await this.safeRecomputeStaffQueue(staffId, "ticket assigned to queue");
+    await this.safeRecomputeStaffQueue(staffId, "ASSIGNED", ticketId);
 
     return res;
   }
@@ -846,7 +847,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ticket rejected and removed from queue");
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "REJECTED", ticketId);
     }
 
     return res;
@@ -991,8 +992,12 @@ export class TicketsService {
 
     const isFollowing = ticket.followers.some((f) => f.userId === user.id);
 
+    // The follower list is only needed for the access check above; don't send other
+    // students' user IDs to the client.
+    const { followers: _followers, ...ticketWithoutFollowers } = ticket;
+
     return {
-      ...ticket,
+      ...ticketWithoutFollowers,
       followerCount: ticket._count.followers,
       commentCount: ticket._count.comments,
       isFollowing,

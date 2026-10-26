@@ -214,7 +214,7 @@ describe("TicketsService Core Logic & Concurrency", () => {
   });
 
   describe("Concurrency Control on Actions", () => {
-    it("ensures only one concurrent call succeeds on startWork and the other receives 409 TICKET_CHANGED", async () => {
+    it("ensures two concurrent calls to startWork result in exactly one succeeding and the other receiving 409 TICKET_CHANGED", async () => {
       const mockStaff: AuthenticatedUser = {
         id: "plumber-1",
         name: "Plumber",
@@ -231,21 +231,30 @@ describe("TicketsService Core Logic & Concurrency", () => {
         assignedToId: mockStaff.id,
       } as any);
 
-      // First call succeeds: updateMany returns count: 1
-      vi.mocked(prisma.ticket.updateMany).mockResolvedValueOnce({ count: 1 });
-      const firstCall = await TicketsService.startWork("ticket-conc-1", mockStaff);
-      expect(firstCall.success).toBe(true);
+      // In the database transaction, the atomic update condition matches once and fails on the concurrent attempt
+      vi.mocked(prisma.ticket.updateMany)
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 0 });
 
-      // Second concurrent call fails: status already changed, updateMany returns count: 0
-      vi.mocked(prisma.ticket.updateMany).mockResolvedValueOnce({ count: 0 });
-      try {
-        await TicketsService.startWork("ticket-conc-1", mockStaff);
-        expect.fail("Second concurrent start should fail with 409");
-      } catch (err: any) {
-        expect(err).toBeInstanceOf(AppError);
-        expect(err.statusCode).toBe(409);
-        expect(err.code).toBe("TICKET_CHANGED");
-      }
+      // Run both startWork calls simultaneously
+      const [res1, res2] = await Promise.allSettled([
+        TicketsService.startWork("ticket-conc-1", mockStaff),
+        TicketsService.startWork("ticket-conc-1", mockStaff),
+      ]);
+
+      const fulfilled = [res1, res2].filter((r) => r.status === "fulfilled") as PromiseFulfilledResult<any>[];
+      const rejected = [res1, res2].filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+
+      // Exactly one succeeds
+      expect(fulfilled).toHaveLength(1);
+      expect(fulfilled[0].value.success).toBe(true);
+
+      // Exactly one gets 409 TICKET_CHANGED
+      expect(rejected).toHaveLength(1);
+      const err = rejected[0].reason;
+      expect(err).toBeInstanceOf(AppError);
+      expect(err.statusCode).toBe(409);
+      expect(err.code).toBe("TICKET_CHANGED");
     });
   });
 

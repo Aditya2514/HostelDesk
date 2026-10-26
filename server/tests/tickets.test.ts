@@ -111,6 +111,27 @@ describe("TicketsService Core Logic & Concurrency", () => {
         expect(err.code).toBe("NO_CURRENT_ROOM");
       }
     });
+
+    it("rejects common-area ticket creation if student has no active room assignment", async () => {
+      vi.mocked(prisma.category.findUnique).mockResolvedValueOnce(mockCategory as any);
+      vi.mocked(prisma.roomOccupancy.findFirst).mockResolvedValueOnce(null);
+
+      try {
+        await TicketsService.createTicket(mockStudent, {
+          locationType: LocationType.COMMON,
+          categoryId: "cat-plumbing",
+          title: "Lobby light issue",
+          description: "No current room",
+          floor: 1,
+          commonSpot: "Main Lobby",
+        });
+        expect.fail("Should have thrown NO_CURRENT_ROOM");
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(AppError);
+        expect(err.statusCode).toBe(400);
+        expect(err.code).toBe("NO_CURRENT_ROOM");
+      }
+    });
   });
 
   describe("Similar Common-Area Tickets (2-hour boundary)", () => {

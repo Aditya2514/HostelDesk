@@ -113,7 +113,7 @@ export class TicketsService {
       floor = data.floor!;
       commonSpot = data.commonSpot!;
 
-      // Determine student's block from active room occupancy or user profile
+      // Determine student's block from active room occupancy
       const userWithRoom = await prisma.roomOccupancy.findFirst({
         where: {
           userId: user.id,
@@ -123,11 +123,15 @@ export class TicketsService {
         include: { room: true },
       });
 
-      blockId = userWithRoom?.room.blockId || user.blockId!;
-      if (!blockId) {
-        const defaultBlock = await prisma.block.findFirst();
-        blockId = defaultBlock?.id || "";
+      if (!userWithRoom) {
+        throw new AppError(
+          400,
+          "NO_CURRENT_ROOM",
+          "You must have an active room assignment to report common area complaints"
+        );
       }
+
+      blockId = userWithRoom.room.blockId;
 
       // Similar common-area tickets in last 2 hours
       if (data.joinExistingCheck !== false) {

@@ -21,13 +21,13 @@ describe("Jobs Tick Endpoint (POST /api/jobs/tick)", () => {
     expect(res.body.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("returns 200 with { ran: [] } when x-jobs-secret header is correct", async () => {
+  it("returns 200 with { ran: [...] } when x-jobs-secret header is correct", async () => {
     const res = await request(app)
       .post("/api/jobs/tick")
       .set("x-jobs-secret", env.JOBS_SECRET);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ran: [] });
+    expect(res.body.ran).toContain("recompute_staff_queues");
   });
 
   it("returns 200 on health check GET /api/health", async () => {

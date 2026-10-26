@@ -4,6 +4,7 @@ import { clock } from "../../lib/clock";
 import { AppError } from "../../lib/errors";
 import { AuthenticatedUser } from "../../types/express";
 import { RoutingService } from "../scheduling/routing.service";
+import { EtaService } from "../scheduling/eta.service";
 import { NotificationService } from "../notifications/notification.service";
 import { TicketAccessService } from "./ticketAccess.service";
 import { assertTransition } from "./stateMachine";
@@ -298,6 +299,12 @@ export class TicketsService {
 
       return updatedTicket;
     });
+
+    if (result.assignedToId) {
+      await EtaService.recomputeStaffQueue(result.assignedToId, "new ticket was assigned to your queue");
+    }
+
+    return result;
   }
 
   /**
@@ -455,6 +462,12 @@ export class TicketsService {
 
       return { success: true, status: TicketStatus.IN_PROGRESS };
     });
+
+    if (ticket.assignedToId) {
+      await EtaService.recomputeStaffQueue(ticket.assignedToId, "work started on site");
+    }
+
+    return res;
   }
 
   /**
@@ -537,6 +550,15 @@ export class TicketsService {
 
       return updated;
     });
+
+    if (ticket.assignedToId) {
+      await EtaService.recomputeStaffQueue(
+        ticket.assignedToId,
+        `ticket priority changed to ${priority}`
+      );
+    }
+
+    return res;
   }
 
   /**
@@ -641,6 +663,13 @@ export class TicketsService {
 
       return { success: true, status: TicketStatus.ASSIGNED, assignedToId: newStaffId };
     });
+
+    if (ticket.assignedToId) {
+      await EtaService.recomputeStaffQueue(ticket.assignedToId, "ticket reassigned away from queue");
+    }
+    await EtaService.recomputeStaffQueue(newStaffId, "ticket reassigned to queue");
+
+    return res;
   }
 
   /**
@@ -738,6 +767,10 @@ export class TicketsService {
 
       return { success: true, status: TicketStatus.ASSIGNED, assignedToId: staffId };
     });
+
+    await EtaService.recomputeStaffQueue(staffId, "ticket assigned to queue");
+
+    return res;
   }
 
   /**
@@ -801,6 +834,12 @@ export class TicketsService {
 
       return { success: true, status: TicketStatus.REJECTED };
     });
+
+    if (ticket.assignedToId) {
+      await EtaService.recomputeStaffQueue(ticket.assignedToId, "ticket rejected and removed from queue");
+    }
+
+    return res;
   }
 
   /**

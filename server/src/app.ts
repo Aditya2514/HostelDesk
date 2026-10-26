@@ -30,13 +30,20 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
 
-// Placeholder for scheduled jobs keep-awake endpoint (Phase 5 will add job logic)
-app.post("/api/jobs/tick", (req: Request, res: Response) => {
-  const secretHeader = req.headers["x-jobs-secret"];
-  if (!secretHeader || secretHeader !== env.JOBS_SECRET) {
-    throw new AppError(401, "UNAUTHORIZED", "Invalid or missing jobs secret header");
+import { EtaService } from "./modules/scheduling/eta.service";
+
+// Scheduled jobs keep-awake endpoint (recomputes all staff queues)
+app.post("/api/jobs/tick", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const secretHeader = req.headers["x-jobs-secret"];
+    if (!secretHeader || secretHeader !== env.JOBS_SECRET) {
+      throw new AppError(401, "UNAUTHORIZED", "Invalid or missing jobs secret header");
+    }
+    const result = await EtaService.recomputeAllStaffQueues("scheduled time tick");
+    res.status(200).json({ ran: ["recompute_staff_queues"], ...result });
+  } catch (error) {
+    next(error);
   }
-  res.status(200).json({ ran: [] });
 });
 
 // Auth routes

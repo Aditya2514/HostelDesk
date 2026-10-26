@@ -12,6 +12,9 @@ vi.mock("../src/lib/prisma", () => ({
     user: {
       findUnique: vi.fn(),
     },
+    roomOccupancy: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   },
 }));
 
@@ -88,6 +91,7 @@ describe("Authorization & Auth Guards", () => {
         trade: null,
         blockId: "block-a",
         isActive: true,
+        currentRoomId: null,
       };
 
       vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(mockUser as any);
@@ -110,6 +114,7 @@ describe("Authorization & Auth Guards", () => {
         trade: null,
         blockId: "block-a",
         isActive: true,
+        currentRoomId: null,
       };
 
       vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(mockUser as any);

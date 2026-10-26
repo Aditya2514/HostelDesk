@@ -5,6 +5,7 @@ import { env } from "../config/env";
 import { AppError } from "../lib/errors";
 import { prisma } from "../lib/prisma";
 import { AuthenticatedUser } from "../types/express";
+import { OccupancyService } from "../modules/occupancy/occupancy.service";
 
 interface JwtPayload {
   userId: string;
@@ -50,7 +51,15 @@ export const requireAuth = async (
       throw new AppError(401, "UNAUTHORIZED", "User not found or inactive");
     }
 
-    req.user = user as AuthenticatedUser;
+    let currentRoomId: string | null = null;
+    if (user.role === Role.STUDENT) {
+      currentRoomId = await OccupancyService.getCurrentRoomId(user.id);
+    }
+
+    req.user = {
+      ...(user as AuthenticatedUser),
+      currentRoomId,
+    };
     next();
   } catch (error) {
     next(error);

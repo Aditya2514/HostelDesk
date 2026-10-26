@@ -293,4 +293,31 @@ describe("TicketsService Core Logic & Concurrency", () => {
       expect((firstItem as any).passwordHash).toBeUndefined();
     });
   });
+
+  describe("followTicket Block Enforce", () => {
+    it("rejects follow if ticket is in a different block from student", async () => {
+      vi.mocked(prisma.ticket.findUnique).mockResolvedValueOnce({
+        id: "common-ticket-b",
+        locationType: LocationType.COMMON,
+        blockId: "block-b",
+        status: TicketStatus.ASSIGNED,
+        _count: { followers: 1 },
+      } as any);
+
+      // Student is in Block A
+      vi.mocked(prisma.roomOccupancy.findFirst).mockResolvedValueOnce({
+        room: { blockId: "block-a" },
+      } as any);
+
+      try {
+        await TicketsService.followTicket("common-ticket-b", mockStudent);
+        expect.fail("Should have thrown 403 FORBIDDEN");
+      } catch (err: any) {
+        expect(err).toBeInstanceOf(AppError);
+        expect(err.statusCode).toBe(403);
+        expect(err.code).toBe("FORBIDDEN");
+        expect(err.message).toContain("assigned block");
+      }
+    });
+  });
 });

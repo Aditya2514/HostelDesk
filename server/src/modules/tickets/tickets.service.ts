@@ -287,6 +287,24 @@ export class TicketsService {
 
     const now = clock.now();
 
+    // Verify student has an active room and belongs to the same block
+    const occupancy = await prisma.roomOccupancy.findFirst({
+      where: {
+        userId: user.id,
+        fromDate: { lte: now },
+        OR: [{ toDate: null }, { toDate: { gt: now } }],
+      },
+      include: { room: true },
+    });
+
+    if (!occupancy) {
+      throw new AppError(400, "NO_CURRENT_ROOM", "You must have an active room assignment to join complaints");
+    }
+
+    if (ticket.blockId !== occupancy.room.blockId) {
+      throw new AppError(403, "FORBIDDEN", "You can only join common-area complaints in your assigned block");
+    }
+
     return await prisma.$transaction(async (tx) => {
       // Upsert follower relation (idempotent)
       await tx.ticketFollower.upsert({

@@ -3,7 +3,7 @@ import { prisma as defaultPrisma } from "../../lib/prisma";
 import { clock } from "../../lib/clock";
 import { AppError } from "../../lib/errors";
 import { AuthenticatedUser } from "../../types/express";
-import { uploadToCloudinary } from "./cloudinary";
+import { uploadToCloudinary, deleteFromCloudinary, CloudinaryUploadResult } from "./cloudinary";
 import {
   MAX_PHOTO_SIZE,
   MAX_PHOTOS_PER_REQUEST,
@@ -108,20 +108,34 @@ export class AttachmentsService {
     }
 
     const now = clock.now();
-    const createdAttachments = [];
+    const uploadedResults: Array<{ file: Express.Multer.File; uploadResult: CloudinaryUploadResult }> = [];
 
     for (const file of files) {
-      const uploadResult = await uploadToCloudinary(
-        file.buffer,
-        `hosteldesk/${ticket.code}`
-      );
+      try {
+        const uploadResult = await uploadToCloudinary(
+          file.buffer,
+          `hosteldesk/${ticket.code}`
+        );
+        uploadedResults.push({ file, uploadResult });
+      } catch (err) {
+        console.error("[AttachmentsService] Cloudinary upload failed:", err);
+        // Clean up any successfully uploaded images in this batch
+        for (const item of uploadedResults) {
+          await deleteFromCloudinary(item.uploadResult.publicId).catch(() => {});
+        }
+        throw new AppError(502, "UPLOAD_FAILED", "Photo upload failed, please try again");
+      }
+    }
 
+    const createdAttachments = [];
+
+    for (const item of uploadedResults) {
       const attachment = await prisma.attachment.create({
         data: {
           ticketId: ticket.id,
           uploaderId: user.id,
-          url: uploadResult.url,
-          publicId: uploadResult.publicId,
+          url: item.uploadResult.url,
+          publicId: item.uploadResult.publicId,
           kind,
           createdAt: now,
         },

@@ -1,6 +1,7 @@
 import request from "supertest";
 import { app } from "../src/app";
 import { prisma } from "../src/lib/prisma";
+import { deleteFromCloudinary } from "../src/modules/evidence/cloudinary";
 
 async function loginUser(email: string) {
   const res = await request(app)
@@ -30,7 +31,44 @@ async function runSmokePhase4() {
   console.log("=================================================\n");
 
   const createdTicketIds: string[] = [];
+  const uploadedCloudinaryPublicIds: string[] = [];
   let adminCookie: string | undefined;
+
+  async function assertValidUploadedPhoto(res: request.Response, step: string): Promise<string> {
+    if (res.status !== 201) {
+      throw new Error(`[${step}] Upload failed with status ${res.status}: ${JSON.stringify(res.body)}`);
+    }
+    const attachment = res.body.attachment || res.body.attachments?.[0];
+    if (!attachment || !attachment.url) {
+      throw new Error(`[${step}] Upload response missing attachment.url: ${JSON.stringify(res.body)}`);
+    }
+
+    // 1. Assert url is NOT .../sample.jpg
+    if (attachment.url.endsWith("/sample.jpg") || attachment.url.includes("sample.jpg")) {
+      throw new Error(`[${step}] Returned fallback sample.jpg instead of real Cloudinary asset: ${attachment.url}`);
+    }
+
+    // 2. Assert url contains "hosteldesk/"
+    if (!attachment.url.includes("hosteldesk/")) {
+      throw new Error(`[${step}] URL does not contain 'hosteldesk/': ${attachment.url}`);
+    }
+
+    // 3. Fetching returns HTTP 200 with an image content-type
+    const imgRes = await fetch(attachment.url);
+    if (imgRes.status !== 200) {
+      throw new Error(`[${step}] Fetching photo URL ${attachment.url} returned status ${imgRes.status}`);
+    }
+    const contentType = imgRes.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) {
+      throw new Error(`[${step}] Fetching photo URL ${attachment.url} returned non-image content-type: ${contentType}`);
+    }
+
+    if (attachment.publicId) {
+      uploadedCloudinaryPublicIds.push(attachment.publicId);
+    }
+
+    return attachment.url;
+  }
 
   try {
     // 0. Log in test users
@@ -135,12 +173,13 @@ async function runSmokePhase4() {
     console.log("OK (404 NOT_FOUND)");
 
     process.stdout.write("1.6 plumber uploads valid AFTER photo evidence -> ");
-    await request(app)
+    const uploadRes1 = await request(app)
       .post(`/api/tickets/${ticket1.id}/attachments`)
       .set("Cookie", assignedStaff1.cookie)
       .attach("photo", samplePng, "room_repair_after.png")
       .field("role", "AFTER");
-    console.log("OK (After photo uploaded)");
+    const photoUrl1 = await assertValidUploadedPhoto(uploadRes1, "1.6");
+    console.log(`OK (After photo uploaded: ${photoUrl1})`);
 
     process.stdout.write("1.7 plumber attempts resolve with 5 wrong codes -> ");
     for (let i = 1; i <= 4; i++) {
@@ -288,10 +327,8 @@ async function runSmokePhase4() {
       .set("Cookie", assignedStaff2.cookie)
       .attach("photo", samplePng, "repair_after.png")
       .field("role", "AFTER");
-    if (uploadAfterRes.status !== 201) {
-      throw new Error(`Photo upload failed: ${uploadAfterRes.status} ${JSON.stringify(uploadAfterRes.body)}`);
-    }
-    console.log(`OK (Photo uploaded, ID: ${uploadAfterRes.body.attachment.id}, Kind: ${uploadAfterRes.body.attachment.kind})`);
+    const photoUrl2 = await assertValidUploadedPhoto(uploadAfterRes, "3.4");
+    console.log(`OK (Photo uploaded: ${photoUrl2}, ID: ${uploadAfterRes.body.attachment.id})`);
 
     process.stdout.write("3.5 plumber resolves common ticket WITH after photo -> ");
     const resolveCommonRes = await request(app)
@@ -333,11 +370,12 @@ async function runSmokePhase4() {
     console.log("OK (Blocked: 400 DOOR_PHOTO_REQUIRED)");
 
     process.stdout.write("4.3 plumber uploads DOOR photo and reports room locked -> ");
-    await request(app)
+    const uploadDoor1 = await request(app)
       .post(`/api/tickets/${ticket3.id}/attachments`)
       .set("Cookie", assignedStaff3.cookie)
       .attach("photo", samplePng, "door.png")
       .field("role", "DOOR");
+    await assertValidUploadedPhoto(uploadDoor1, "4.3");
 
     const roomLockedRes1 = await request(app)
       .post(`/api/tickets/${ticket3.id}/room-locked`)
@@ -369,11 +407,12 @@ async function runSmokePhase4() {
     await request(app).post(`/api/tickets/${ticket3.id}/start`).set("Cookie", assignedStaff3.cookie);
 
     process.stdout.write("5.1 plumber reports room locked for 2nd visit -> ");
-    await request(app)
+    const uploadDoor2 = await request(app)
       .post(`/api/tickets/${ticket3.id}/attachments`)
       .set("Cookie", assignedStaff3.cookie)
       .attach("photo", samplePng, "door2.png")
       .field("role", "DOOR");
+    await assertValidUploadedPhoto(uploadDoor2, "5.1");
 
     const roomLockedRes2 = await request(app)
       .post(`/api/tickets/${ticket3.id}/room-locked`)
@@ -472,11 +511,12 @@ async function runSmokePhase4() {
     createdTicketIds.push(ticket4.id);
     const assignedStaff4 = getAssignedPlumber(ticket4);
     await request(app).post(`/api/tickets/${ticket4.id}/start`).set("Cookie", assignedStaff4.cookie);
-    await request(app)
+    const uploadDoor3 = await request(app)
       .post(`/api/tickets/${ticket4.id}/attachments`)
       .set("Cookie", assignedStaff4.cookie)
       .attach("photo", samplePng, "door.png")
       .field("role", "DOOR");
+    await assertValidUploadedPhoto(uploadDoor3, "7.1");
     await request(app).post(`/api/tickets/${ticket4.id}/room-locked`).set("Cookie", assignedStaff4.cookie);
     console.log(`OK (ID: ${ticket4.id}, Status: AWAITING_ACCESS)`);
 
@@ -543,6 +583,15 @@ async function runSmokePhase4() {
       }
     } catch {
       // ignore
+    }
+
+    // Clean up uploaded Cloudinary assets
+    for (const publicId of uploadedCloudinaryPublicIds) {
+      try {
+        await deleteFromCloudinary(publicId);
+      } catch {
+        // ignore
+      }
     }
 
     // Cleanup created test tickets

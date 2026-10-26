@@ -346,4 +346,44 @@ describe("Photo Evidence Uploads & Validations (modules/evidence)", () => {
       )
     ).rejects.toThrowError(AppError);
   });
+
+  it("rejects with 502 UPLOAD_FAILED and saves nothing to DB when uploadToCloudinary fails", async () => {
+    const { uploadToCloudinary } = await import("../src/modules/evidence/cloudinary");
+    vi.mocked(uploadToCloudinary).mockRejectedValueOnce(new Error("Server returned unexpected status code - 403"));
+
+    const mockPrisma: any = {
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue(mockRoomTicket),
+      },
+      attachment: {
+        create: vi.fn(),
+      },
+      ticketEvent: {
+        create: vi.fn(),
+      },
+    };
+
+    const files: any[] = [
+      { originalname: "photo.jpg", mimetype: "image/jpeg", size: validJpegBuffer.length, buffer: validJpegBuffer },
+    ];
+
+    await expect(
+      AttachmentsService.uploadPhotos(
+        "ticket-1",
+        mockUserStudent,
+        AttachmentKind.BEFORE,
+        files,
+        mockPrisma
+      )
+    ).rejects.toThrowError(
+      expect.objectContaining({
+        statusCode: 502,
+        code: "UPLOAD_FAILED",
+        message: "Photo upload failed, please try again",
+      })
+    );
+
+    expect(mockPrisma.attachment.create).not.toHaveBeenCalled();
+    expect(mockPrisma.ticketEvent.create).not.toHaveBeenCalled();
+  });
 });

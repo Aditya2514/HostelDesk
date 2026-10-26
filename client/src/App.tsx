@@ -8,6 +8,7 @@ import { StudentDashboard } from "./pages/StudentDashboard";
 import { StaffDashboard } from "./pages/StaffDashboard";
 import { WardenDashboard } from "./pages/WardenDashboard";
 import { AdminDashboard } from "./pages/AdminDashboard";
+import { TicketDetailPage } from "./pages/TicketDetailPage";
 import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
@@ -53,6 +54,15 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute allowedRoles={["STUDENT"]}>
                   <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/tickets/:id"
+              element={
+                <ProtectedRoute>
+                  <TicketDetailPage />
                 </ProtectedRoute>
               }
             />

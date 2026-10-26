@@ -30,10 +30,12 @@ async function runSmokePhase4() {
   console.log("=================================================\n");
 
   const createdTicketIds: string[] = [];
+  let adminCookie: string | undefined;
 
   try {
     // 0. Log in test users
-    const [student1, student2, student3, plumber1, plumber2, plumber3, wardenA] = await Promise.all([
+    const [admin, student1, student2, student3, plumber1, plumber2, plumber3, wardenA] = await Promise.all([
+      loginUser("admin@hosteldesk.dev"),
       loginUser("student1@hosteldesk.dev"),
       loginUser("student2@hosteldesk.dev"),
       loginUser("student3@hosteldesk.dev"),
@@ -42,6 +44,13 @@ async function runSmokePhase4() {
       loginUser("plumber3@hosteldesk.dev"),
       loginUser("warden.a@hosteldesk.dev"),
     ]);
+    adminCookie = admin.cookie;
+
+    // Reset demo clock to real time
+    await request(app)
+      .post("/api/admin/demo/reset-time")
+      .set("Cookie", admin.cookie);
+
 
     const allPlumbers = [plumber1, plumber2, plumber3];
     const getAssignedPlumber = (t: any) => {
@@ -133,17 +142,65 @@ async function runSmokePhase4() {
       .field("role", "AFTER");
     console.log("OK (After photo uploaded)");
 
-    process.stdout.write("1.7 plumber attempts resolve with wrong code ('0000') -> ");
-    const wrongCodeRes = await request(app)
+    process.stdout.write("1.7 plumber attempts resolve with 5 wrong codes -> ");
+    for (let i = 1; i <= 4; i++) {
+      const wrongCodeRes = await request(app)
+        .post(`/api/tickets/${ticket1.id}/resolve`)
+        .set("Cookie", assignedStaff1.cookie)
+        .send({ code: "0000" });
+      if (wrongCodeRes.status !== 400 || wrongCodeRes.body.error?.code !== "INVALID_CODE") {
+        throw new Error(`Wrong code attempt ${i} should return 400 INVALID_CODE, got ${wrongCodeRes.status} ${JSON.stringify(wrongCodeRes.body)}`);
+      }
+    }
+    const fifthWrongRes = await request(app)
       .post(`/api/tickets/${ticket1.id}/resolve`)
       .set("Cookie", assignedStaff1.cookie)
       .send({ code: "0000" });
-    if (wrongCodeRes.status !== 400 || wrongCodeRes.body.error?.code !== "INVALID_CODE") {
-      throw new Error(`Wrong code should return 400 INVALID_CODE, got ${wrongCodeRes.status} ${JSON.stringify(wrongCodeRes.body)}`);
+    if (fifthWrongRes.status !== 429 || fifthWrongRes.body.error?.code !== "CODE_LOCKED") {
+      throw new Error(`5th wrong code should return 429 CODE_LOCKED, got ${fifthWrongRes.status} ${JSON.stringify(fifthWrongRes.body)}`);
     }
-    console.log("OK (Rejected with remaining attempts warning)");
 
-    process.stdout.write("1.8 plumber resolves with correct code -> ");
+    // Read the ticket row and verify codeBlockedUntil & CODE_FAILED events count
+    const lockedTicketRow = await prisma.ticket.findUnique({
+      where: { id: ticket1.id },
+      select: { codeBlockedUntil: true, codeFailedAttempts: true },
+    });
+    if (!lockedTicketRow?.codeBlockedUntil) {
+      throw new Error("Expected codeBlockedUntil to be set on ticket in DB!");
+    }
+    const codeFailedEventsCount = await prisma.ticketEvent.count({
+      where: { ticketId: ticket1.id, type: "CODE_FAILED" },
+    });
+    if (codeFailedEventsCount !== 5) {
+      throw new Error(`Expected exactly 5 CODE_FAILED events, got ${codeFailedEventsCount}`);
+    }
+    const diffMs = lockedTicketRow.codeBlockedUntil.getTime() - Date.now();
+    const minAhead = Math.round(diffMs / 60000);
+    console.log(`OK (5th attempt returns 429 CODE_LOCKED)`);
+    console.log(`    codeBlockedUntil: ${lockedTicketRow.codeBlockedUntil.toISOString()} (~${minAhead} min ahead)`);
+    console.log(`    CODE_FAILED events: ${codeFailedEventsCount}`);
+
+    process.stdout.write("1.8 correct code while locked is still refused with 429 -> ");
+    const lockedCorrectRes = await request(app)
+      .post(`/api/tickets/${ticket1.id}/resolve`)
+      .set("Cookie", assignedStaff1.cookie)
+      .send({ code: completionCode });
+    if (lockedCorrectRes.status !== 429 || lockedCorrectRes.body.error?.code !== "CODE_LOCKED") {
+      throw new Error(`Correct code while locked should return 429 CODE_LOCKED, got ${lockedCorrectRes.status} ${JSON.stringify(lockedCorrectRes.body)}`);
+    }
+    console.log("OK (Refused with 429 CODE_LOCKED)");
+
+    process.stdout.write("1.9 advance demo clock 16 min -> ");
+    const advanceRes = await request(app)
+      .post("/api/admin/demo/advance-time")
+      .set("Cookie", admin.cookie)
+      .send({ minutes: 16 });
+    if (advanceRes.status !== 200) {
+      throw new Error(`Failed to advance demo clock: ${advanceRes.status} ${JSON.stringify(advanceRes.body)}`);
+    }
+    console.log(`OK (Clock advanced by 16 min, current: ${advanceRes.body.currentClock})`);
+
+    process.stdout.write("1.10 plumber resolves with correct code -> ");
     const resolveRes1 = await request(app)
       .post(`/api/tickets/${ticket1.id}/resolve`)
       .set("Cookie", assignedStaff1.cookie)
@@ -472,10 +529,22 @@ async function runSmokePhase4() {
     }
     console.log(`OK (Status: ${checkProblemRes.body.status}, ReopenCount: ${checkProblemRes.body.reopenCount})`);
 
+    // Reset clock back to 0 at the end
+    await request(app).post("/api/admin/demo/reset-time").set("Cookie", admin.cookie);
+
     console.log("\n=================================================");
     console.log("🎉 All Phase 4 Smoke Tests Passed Successfully!");
     console.log("=================================================");
   } finally {
+    // Reset clock back to 0 in case of error
+    try {
+      if (adminCookie) {
+        await request(app).post("/api/admin/demo/reset-time").set("Cookie", adminCookie);
+      }
+    } catch {
+      // ignore
+    }
+
     // Cleanup created test tickets
     if (createdTicketIds.length > 0) {
       await prisma.ticket.deleteMany({

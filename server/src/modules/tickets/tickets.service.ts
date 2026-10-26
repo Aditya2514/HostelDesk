@@ -599,11 +599,10 @@ export class TicketsService {
       // Check lock state
       if (lockedTicket.codeBlockedUntil && lockedTicket.codeBlockedUntil.getTime() > now.getTime()) {
         const minutesLeft = Math.ceil((lockedTicket.codeBlockedUntil.getTime() - now.getTime()) / 60000);
-        throw new AppError(
-          429,
-          "CODE_LOCKED",
-          `Too many attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.`
-        );
+        return {
+          outcome: "CODE_LOCKED" as const,
+          minutesLeft: minutesLeft > 0 ? minutesLeft : 1,
+        };
       }
 
       // 3. For ROOM tickets: verify code
@@ -642,14 +641,16 @@ export class TicketsService {
           });
 
           if (newFailedCount >= 5) {
-            throw new AppError(429, "CODE_LOCKED", "Too many attempts. Try again in 15 minutes.");
+            return {
+              outcome: "CODE_LOCKED" as const,
+              minutesLeft: 15,
+            };
           }
 
-          throw new AppError(
-            400,
-            "INVALID_CODE",
-            `Invalid completion code. ${5 - newFailedCount} attempt(s) remaining.`
-          );
+          return {
+            outcome: "INVALID_CODE" as const,
+            remaining: 5 - newFailedCount,
+          };
         }
 
         // Correct code: log CODE_VERIFIED event
@@ -712,15 +713,36 @@ export class TicketsService {
         tx
       );
 
-      return updatedTicket;
+      return {
+        outcome: "SUCCESS" as const,
+        ticket: updatedTicket,
+      };
     }, TX_OPTIONS);
+
+    if (result.outcome === "CODE_LOCKED") {
+      throw new AppError(
+        429,
+        "CODE_LOCKED",
+        result.minutesLeft
+          ? `Too many attempts. Try again in ${result.minutesLeft} minute${result.minutesLeft > 1 ? "s" : ""}.`
+          : "Too many attempts. Try again in 15 minutes."
+      );
+    }
+
+    if (result.outcome === "INVALID_CODE") {
+      throw new AppError(
+        400,
+        "INVALID_CODE",
+        `Invalid completion code. ${result.remaining} attempt(s) remaining.`
+      );
+    }
 
     // Recompute staff queue post-commit
     if (ticket.assignedToId) {
       await this.safeRecomputeStaffQueue(ticket.assignedToId, "TICKET_RESOLVED", ticketId);
     }
 
-    return result;
+    return result.ticket;
   }
 
   /**

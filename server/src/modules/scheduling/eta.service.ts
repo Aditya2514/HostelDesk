@@ -223,38 +223,35 @@ export class EtaService {
         }
       }
 
-      // Log prediction only if changed by > 5 minutes
-      if (p50ChangedSignificantly && newP50) {
-        await client.ticketPrediction.create({
-          data: {
-            ticketId: ticket.id,
-            staffId,
-            predictedP50At: newP50,
-            predictedP80At: newP80 || newP50,
-            createdAt: now,
-          },
-        });
-      }
-
-      // Check if ticket record needs DB update
-      const p50Time = ticket.etaP50At?.getTime() ?? null;
-      const newP50Time = newP50?.getTime() ?? null;
-      const p80Time = ticket.etaP80At?.getTime() ?? null;
-      const newP80Time = newP80?.getTime() ?? null;
-      const notifiedTime = ticket.etaNotifiedP50At?.getTime() ?? null;
-      const updatedNotifiedTime = updatedNotifiedP50?.getTime() ?? null;
-
-      if (
-        p50Time !== newP50Time ||
-        p80Time !== newP80Time ||
-        notifiedTime !== updatedNotifiedTime
-      ) {
+      // Log prediction and update ticket record only if changed by > 5 minutes (or initial set)
+      if (p50ChangedSignificantly) {
         await client.ticket.update({
           where: { id: ticket.id },
           data: {
             etaP50At: newP50,
             etaP80At: newP80,
             etaNotifiedP50At: updatedNotifiedP50,
+          },
+        });
+
+        if (newP50) {
+          await client.ticketPrediction.create({
+            data: {
+              ticketId: ticket.id,
+              staffId,
+              predictedP50At: newP50,
+              predictedP80At: newP80 || newP50,
+              createdAt: now,
+            },
+          });
+        }
+      } else if (!newP50 && ticket.etaP50At) {
+        // Clear ETAs for on-hold or awaiting-access tickets
+        await client.ticket.update({
+          where: { id: ticket.id },
+          data: {
+            etaP50At: null,
+            etaP80At: null,
           },
         });
       }

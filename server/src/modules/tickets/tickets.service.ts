@@ -421,7 +421,7 @@ export class TicketsService {
 
     const now = clock.now();
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       // Concurrency check: conditional update
       const updated = await tx.ticket.updateMany({
         where: {
@@ -516,7 +516,7 @@ export class TicketsService {
 
     const now = clock.now();
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       // Note: dueAt stays category-based per domain rule 5.2
       const updated = await tx.ticket.updateMany({
         where: {
@@ -614,7 +614,7 @@ export class TicketsService {
 
     const now = clock.now();
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const oldStaffId = ticket.assignedToId;
 
       // Conditional update for concurrency protection
@@ -724,7 +724,7 @@ export class TicketsService {
 
     const now = clock.now();
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const updated = await tx.ticket.updateMany({
         where: {
           id: ticketId,
@@ -796,7 +796,7 @@ export class TicketsService {
 
     const now = clock.now();
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const updated = await tx.ticket.updateMany({
         where: {
           id: ticketId,

@@ -180,7 +180,7 @@ export class TicketsService {
     const dueAt = new Date(now.getTime() + category.slaMinutes * 60 * 1000);
 
     // Run ticket creation in a single transaction
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 1. Temporary placeholder code until autoincrement number is returned
       const tempCode = `HD-TMP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 

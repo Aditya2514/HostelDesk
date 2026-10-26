@@ -117,9 +117,10 @@ export function simulateQueue({
     if (!workingCursor) break;
     cursor = workingCursor;
 
+    const currentCursor = cursor;
     // Find candidate jobs that are ready to start (notBefore <= cursor or no notBefore)
     const readyJobs = pendingJobs.filter(
-      (j) => !j.notBefore || j.notBefore.getTime() <= cursor.getTime()
+      (j) => !j.notBefore || (currentCursor && j.notBefore.getTime() <= currentCursor.getTime())
     );
 
     if (readyJobs.length > 0) {

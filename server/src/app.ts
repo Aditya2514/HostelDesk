@@ -8,6 +8,9 @@ import { errorHandler, AppError } from "./lib/errors";
 
 export const app: Application = express();
 
+// Trust reverse proxy (e.g. Render / Cloudflare) for accurate client IP rate limiting
+app.set("trust proxy", 1);
+
 // Security and utility middleware
 app.use(helmet());
 app.use(

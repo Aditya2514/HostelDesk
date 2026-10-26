@@ -2,20 +2,26 @@ import React, { useState } from "react";
 import { Header } from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
+import { RoomBrowser } from "../components/RoomBrowser";
+import { AnalyticsView } from "../components/AnalyticsView";
+import { AdminAuditLogView } from "../components/AdminAuditLogView";
 import {
   Settings,
   Clock,
   RotateCcw,
   FastForward,
-  Building,
-  Users,
   CheckCircle,
   AlertCircle,
-  Calendar,
+  DoorClosed,
+  BarChart3,
+  History,
 } from "lucide-react";
+
+type AdminTab = "rooms" | "analytics" | "audit" | "timetravel";
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<AdminTab>("rooms");
   const [offsetMinutes, setOffsetMinutes] = useState<number>(0);
   const [currentClock, setCurrentClock] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -86,7 +92,7 @@ export const AdminDashboard: React.FC = () => {
                 System Administrator
               </h1>
               <p className="text-slate-400 text-sm mt-1">
-                Manage hostel blocks, occupancy, staff shifts, categories, and test time simulations.
+                Manage hostel blocks, occupancy, staff shifts, categories, audit logs, and analytics.
               </p>
             </div>
 
@@ -97,9 +103,68 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Demo Time Travel Controls (Section 4 Cross-cutting rule 1) */}
-        {isDemoMode && (
-          <div className="bg-slate-900/90 border border-indigo-500/30 rounded-2xl p-6 mb-8 relative overflow-hidden shadow-xl shadow-indigo-500/5">
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-6 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab("rooms")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === "rooms"
+                ? "bg-rose-500 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <DoorClosed className="w-4 h-4" />
+            <span>Rooms & Occupancy</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === "analytics"
+                ? "bg-rose-500 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Analytics Dashboard</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === "audit"
+                ? "bg-rose-500 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Audit Log</span>
+          </button>
+
+          {isDemoMode && (
+            <button
+              onClick={() => setActiveTab("timetravel")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+                activeTab === "timetravel"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              <span>Time Travel Simulator</span>
+            </button>
+          )}
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === "rooms" && <RoomBrowser />}
+
+        {activeTab === "analytics" && <AnalyticsView />}
+
+        {activeTab === "audit" && <AdminAuditLogView />}
+
+        {activeTab === "timetravel" && isDemoMode && (
+          <div className="bg-slate-900/90 border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden shadow-xl shadow-indigo-500/5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <div className="flex items-center space-x-2">
@@ -196,35 +261,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Phase 1 Shell Empty State */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-8 sm:p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mx-auto mb-5 shadow-lg shadow-rose-500/10">
-            <Building className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Hostel Office Management</h2>
-          <p className="text-slate-400 max-w-lg mx-auto text-sm leading-relaxed mb-6">
-            In Phase 6, you will manage campus configuration: bulk CSV import for semester student room occupancy, staff shift scheduling rotas, category default SLAs, and room maintenance history.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
-            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
-              <Users className="w-5 h-5 text-indigo-400 mb-2" />
-              <div className="text-xs font-semibold text-slate-300">Occupancy Import (Phase 6)</div>
-              <div className="text-xs text-slate-400 mt-1">Upload CSV of student room assignments with valid dates</div>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
-              <Calendar className="w-5 h-5 text-amber-400 mb-2" />
-              <div className="text-xs font-semibold text-slate-300">Staff Shift Rota</div>
-              <div className="text-xs text-slate-400 mt-1">Configure morning/evening shift windows per trade</div>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800">
-              <Settings className="w-5 h-5 text-rose-400 mb-2" />
-              <div className="text-xs font-semibold text-slate-300">Category SLA Tuning</div>
-              <div className="text-xs text-slate-400 mt-1">Edit default durations and urgent SLA response limits</div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   );

@@ -92,10 +92,12 @@ Once Render finishes the initial deployment and migrations:
 4. Add the **Environment Variables**:
    | Variable | Value |
    |---|---|
-   | `VITE_API_URL` | Your Render backend URL (e.g. `https://hosteldesk-server.onrender.com` without trailing slash) |
+   | `VITE_API_URL` | Leave empty `""` (requests use same-site `/api` path) |
    | `VITE_DEMO_MODE` | `true` |
-5. Click **Deploy**.
-6. The included `client/vercel.json` ensures that all client-side routes (`/student`, `/staff`, `/warden`, `/admin`) properly rewrite to `index.html` on page reload without returning 404.
+5. **Same-Site API Rewriting (`client/vercel.json`)**:
+   - `client/vercel.json` contains a rewrite rule forwarding `/api/(.*)` directly to your Render backend (`https://hosteldesk-server.onrender.com/api/$1`) before the SPA fallback rewrite.
+   - *Why:* This allows the browser to communicate with the API on the exact same origin as the frontend. The `token` authentication cookie is treated as **first-party (`SameSite=Lax`)**, completely bypassing Safari / iOS Intelligent Tracking Prevention (ITP) that would otherwise block third-party cookies on iPhone devices.
+6. Click **Deploy**. All client-side routes (`/student`, `/staff`, `/warden`, `/admin`) rewrite to `index.html`.
 
 ---
 

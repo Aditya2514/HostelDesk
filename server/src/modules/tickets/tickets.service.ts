@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { Prisma, LocationType, Priority, TicketStatus, Role } from "@prisma/client";
+import { Prisma, LocationType, Priority, TicketStatus, Role, ResolutionMethod, AttachmentKind, EventType } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { clock } from "../../lib/clock";
 import { AppError } from "../../lib/errors";
@@ -12,6 +12,7 @@ import { ShiftWindow } from "../scheduling/shifts";
 import { NotificationService } from "../notifications/notification.service";
 import { TicketAccessService } from "./ticketAccess.service";
 import { assertTransition } from "./stateMachine";
+import { calculateActualWorkMinutes } from "./workMinutes";
 
 export const OPEN_STATUSES: TicketStatus[] = [
   TicketStatus.RAISED,
@@ -507,6 +508,205 @@ export class TicketsService {
     }
 
     return res;
+  }
+
+  /**
+   * Resolves a ticket by assigned staff:
+   * - Requires at least one AFTER photo uploaded by this staff member since latest IN_PROGRESS start.
+   * - ROOM tickets: requires completion code, row-locked verification, 5 attempts max with 15 min lock.
+   * - COMMON tickets: resolves to AWAITING_VERIFICATION via PHOTO.
+   * - Computes actualWorkMinutes across active IN_PROGRESS intervals.
+   */
+  static async resolveTicket(ticketId: string, user: AuthenticatedUser, code?: string) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        category: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (ticket.assignedToId !== user.id && user.role !== Role.ADMIN) {
+      throw new AppError(403, "FORBIDDEN", "Only the assigned staff member can resolve this ticket");
+    }
+
+    if (ticket.status !== TicketStatus.IN_PROGRESS) {
+      throw new AppError(400, "TICKET_NOT_IN_PROGRESS", "Ticket must be in progress to be marked resolved");
+    }
+
+    const now = clock.now();
+
+    const targetStatus =
+      ticket.locationType === LocationType.ROOM
+        ? TicketStatus.RESOLVED
+        : TicketStatus.AWAITING_VERIFICATION;
+
+    const resolutionMethod =
+      ticket.locationType === LocationType.ROOM
+        ? ResolutionMethod.CODE
+        : ResolutionMethod.PHOTO;
+
+    assertTransition(ticket.status, targetStatus, user.role);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Verify AFTER photo was uploaded by this staff member since latest startedAt
+      const afterPhoto = await tx.attachment.findFirst({
+        where: {
+          ticketId: ticket.id,
+          kind: AttachmentKind.AFTER,
+          uploaderId: user.id,
+          createdAt: {
+            gte: ticket.startedAt ?? new Date(0),
+          },
+        },
+      });
+
+      if (!afterPhoto) {
+        throw new AppError(400, "AFTER_PHOTO_REQUIRED", "At least one AFTER photo is required to resolve this ticket");
+      }
+
+      // 2. Row-locked fetch to prevent parallel code guessing races
+      const [lockedTicket] = await tx.$queryRaw<Array<{
+        id: string;
+        completionCode: string | null;
+        codeFailedAttempts: number;
+        codeBlockedUntil: Date | null;
+        status: TicketStatus;
+        locationType: LocationType;
+      }>>`SELECT id, "completionCode", "codeFailedAttempts", "codeBlockedUntil", status, "locationType" FROM tickets WHERE id = ${ticketId} FOR UPDATE`;
+
+      if (!lockedTicket) {
+        throw new AppError(404, "NOT_FOUND", "Ticket not found");
+      }
+
+      // Check lock state
+      if (lockedTicket.codeBlockedUntil && lockedTicket.codeBlockedUntil.getTime() > now.getTime()) {
+        const minutesLeft = Math.ceil((lockedTicket.codeBlockedUntil.getTime() - now.getTime()) / 60000);
+        throw new AppError(
+          429,
+          "CODE_LOCKED",
+          `Too many attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.`
+        );
+      }
+
+      // 3. For ROOM tickets: verify code
+      if (ticket.locationType === LocationType.ROOM) {
+        const inputCode = code ? String(code).trim() : "";
+        if (!inputCode) {
+          throw new AppError(400, "CODE_REQUIRED", "Completion code is required for room tickets");
+        }
+
+        if (inputCode !== lockedTicket.completionCode) {
+          const newFailedCount = (lockedTicket.codeFailedAttempts || 0) + 1;
+          let blockedUntil: Date | null = null;
+          let resetCount = newFailedCount;
+
+          if (newFailedCount >= 5) {
+            blockedUntil = new Date(now.getTime() + 15 * 60 * 1000);
+            resetCount = 0; // Reset counter after locking
+          }
+
+          await tx.ticket.update({
+            where: { id: ticketId },
+            data: {
+              codeFailedAttempts: resetCount,
+              codeBlockedUntil: blockedUntil,
+            },
+          });
+
+          await tx.ticketEvent.create({
+            data: {
+              ticketId,
+              actorId: user.id,
+              type: EventType.CODE_FAILED,
+              note: `Invalid completion code attempt (${newFailedCount}/5)`,
+              createdAt: now,
+            },
+          });
+
+          if (newFailedCount >= 5) {
+            throw new AppError(429, "CODE_LOCKED", "Too many attempts. Try again in 15 minutes.");
+          }
+
+          throw new AppError(
+            400,
+            "INVALID_CODE",
+            `Invalid completion code. ${5 - newFailedCount} attempt(s) remaining.`
+          );
+        }
+
+        // Correct code: log CODE_VERIFIED event
+        await tx.ticketEvent.create({
+          data: {
+            ticketId,
+            actorId: user.id,
+            type: EventType.CODE_VERIFIED,
+            note: "Completion code verified with occupant",
+            createdAt: now,
+          },
+        });
+      }
+
+      // 4. Compute actualWorkMinutes across all IN_PROGRESS intervals
+      const statusEvents = await tx.ticketEvent.findMany({
+        where: { ticketId },
+        select: { toStatus: true, fromStatus: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const actualWorkMinutes = calculateActualWorkMinutes(statusEvents, now);
+
+      // 5. Update ticket to resolved state & clear completionCode
+      const updatedTicket = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: targetStatus,
+          resolutionMethod,
+          resolvedAt: now,
+          actualWorkMinutes,
+          completionCode: null,
+          codeFailedAttempts: 0,
+          codeBlockedUntil: null,
+        },
+      });
+
+      // 6. Record STATUS_CHANGED timeline event
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: TicketStatus.IN_PROGRESS,
+          toStatus: targetStatus,
+          type: EventType.STATUS_CHANGED,
+          note: `Marked fixed via ${resolutionMethod} (${actualWorkMinutes} working minutes logged)`,
+          createdAt: now,
+        },
+      });
+
+      // 7. Notify audience
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "TICKET_RESOLVED",
+          message: `Your ${ticket.category.name} issue was marked fixed. Please confirm or report a problem within 48 hours.`,
+        },
+        tx
+      );
+
+      return updatedTicket;
+    }, TX_OPTIONS);
+
+    // Recompute staff queue post-commit
+    if (ticket.assignedToId) {
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "TICKET_RESOLVED", ticketId);
+    }
+
+    return result;
   }
 
   /**

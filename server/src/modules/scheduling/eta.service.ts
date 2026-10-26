@@ -61,6 +61,11 @@ export type EtaReason =
   | "REASSIGNED_OUT" // a ticket was moved out of this queue
   | "PRIORITY_CHANGED" // a warden changed a ticket's priority
   | "WORK_STARTED" // the staff member started a job
+  | "TICKET_RESOLVED" // a ticket was resolved and completed
+  | "TICKET_DISPUTED" // a ticket was disputed and returned to queue
+  | "ACCESS_RESPONDED" // occupant chose access slot or 15min boost
+  | "ON_HOLD" // ticket put on hold
+  | "RESUMED" // ticket resumed from hold
   | "REJECTED" // a ticket was rejected and left the queue
   | "TICK" // periodic recompute: time passed, a job may be overrunning
   | "SEED"; // synthetic data setup

@@ -28,6 +28,7 @@ ticketRouter.post("/:id/follow", requireRole(Role.STUDENT), TicketsController.fo
 
 // Staff actions
 ticketRouter.post("/:id/start", requireRole(Role.STAFF), TicketsController.start);
+ticketRouter.post("/:id/resolve", requireRole(Role.STAFF), TicketsController.resolve);
 
 // Warden / Chief Warden actions
 ticketRouter.patch(

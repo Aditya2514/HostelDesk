@@ -19,7 +19,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 if (env.NODE_ENV !== "test") {
   app.use(morgan("dev"));

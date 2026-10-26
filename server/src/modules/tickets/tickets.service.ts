@@ -992,8 +992,12 @@ export class TicketsService {
 
     const isFollowing = ticket.followers.some((f) => f.userId === user.id);
 
+    // The follower list is only needed for the access check above; don't send other
+    // students' user IDs to the client.
+    const { followers: _followers, ...ticketWithoutFollowers } = ticket;
+
     return {
-      ...ticket,
+      ...ticketWithoutFollowers,
       followerCount: ticket._count.followers,
       commentCount: ticket._count.comments,
       isFollowing,

@@ -1,10 +1,16 @@
 import { Router } from "express";
-import { requireAuth } from "../../middleware/auth.middleware";
+import { Role } from "@prisma/client";
+import { requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { StaffController } from "./staff.controller";
 
 export const staffRouter = Router();
 
 staffRouter.use(requireAuth);
 
-staffRouter.get("/", StaffController.listStaff);
+// Only wardens and admins need the staff directory (for reassigning tickets).
+staffRouter.get(
+  "/",
+  requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
+  StaffController.listStaff
+);
 staffRouter.get("/:id/schedule", StaffController.getSchedule);

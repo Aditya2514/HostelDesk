@@ -145,6 +145,32 @@ describe("Schedule & ETA Explanation Endpoints", () => {
     });
   });
 
+  describe("GET /api/staff (staff directory)", () => {
+    it("rejects students and staff with 403 and allows wardens", async () => {
+      for (const [token, role, id] of [
+        [studentToken, Role.STUDENT, "student-1"],
+        [staffToken, Role.STAFF, "staff-1"],
+      ] as const) {
+        vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ id, role, isActive: true } as any);
+        const res = await request(app).get("/api/staff").set("Cookie", `token=${token}`);
+        expect(res.status).toBe(403);
+      }
+
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        id: "warden-1",
+        role: Role.WARDEN,
+        blockId: "block-a",
+        isActive: true,
+      } as any);
+      vi.mocked(prisma.user.findMany).mockResolvedValueOnce([
+        { id: "staff-1", name: "Ramesh", trade: Trade.PLUMBER, blockId: null },
+      ] as any);
+      const wardenRes = await request(app).get("/api/staff").set("Cookie", `token=${wardenToken}`);
+      expect(wardenRes.status).toBe(200);
+      expect(wardenRes.body.staff).toHaveLength(1);
+    });
+  });
+
   describe("GET /api/staff/:id/schedule", () => {
     it("allows staff member themselves or warden to view schedule, and rejects student with 403", async () => {
       // 1. Student attempt -> 403 FORBIDDEN

@@ -276,6 +276,19 @@ describe("TicketsService Core Logic & Concurrency", () => {
 
       const ticket = await TicketsService.getTicket("ticket-sec-1", mockStudent);
 
+      // The mocked row above doesn't contain secret columns, so checking the output alone
+      // proves nothing. Check the query instead: it must use an explicit `select` that
+      // never asks for them (an `include` or missing select would return every column).
+      const SECRET_FIELDS = ["completionCode", "codeFailedAttempts", "codeBlockedUntil"];
+      const detailQuery = vi.mocked(prisma.ticket.findUnique).mock.calls.at(-1)![0] as any;
+      expect(detailQuery.select).toBeDefined();
+      expect(detailQuery.include).toBeUndefined();
+      for (const field of SECRET_FIELDS) {
+        expect(detailQuery.select[field]).toBeUndefined();
+      }
+      // Other students' user IDs (the follower list) are not sent to the client
+      expect((ticket as any).followers).toBeUndefined();
+
       expect((ticket as any).completionCode).toBeUndefined();
       expect((ticket as any).codeFailedAttempts).toBeUndefined();
       expect((ticket as any).codeBlockedUntil).toBeUndefined();
@@ -295,6 +308,13 @@ describe("TicketsService Core Logic & Concurrency", () => {
 
       const listResult = await TicketsService.listTickets(mockStudent, { page: 1, limit: 10 });
       const firstItem = listResult.tickets[0];
+
+      const listQuery = vi.mocked(prisma.ticket.findMany).mock.calls.at(-1)![0] as any;
+      expect(listQuery.select).toBeDefined();
+      expect(listQuery.include).toBeUndefined();
+      for (const field of SECRET_FIELDS) {
+        expect(listQuery.select[field]).toBeUndefined();
+      }
 
       expect((firstItem as any).completionCode).toBeUndefined();
       expect((firstItem as any).codeFailedAttempts).toBeUndefined();

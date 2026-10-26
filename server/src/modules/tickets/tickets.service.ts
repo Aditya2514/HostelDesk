@@ -25,6 +25,18 @@ export const TX_OPTIONS = { timeout: 15000, maxWait: 10000 };
 
 export class TicketsService {
   /**
+   * Safely recomputes staff queue after transaction commit, logging errors
+   * without failing the parent request.
+   */
+  private static async safeRecomputeStaffQueue(staffId: string, reason: string): Promise<void> {
+    try {
+      await EtaService.recomputeStaffQueue(staffId, reason);
+    } catch (err) {
+      console.error(`[EtaService] Post-commit queue recompute failed for staff ${staffId} (${reason}):`, err);
+    }
+  }
+
+  /**
    * Phase 4 hook: executed when ticket enters IN_PROGRESS.
    * Phase 4 will implement 4-digit completion code generation here.
    */
@@ -299,7 +311,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (result.assignedToId) {
-      await EtaService.recomputeStaffQueue(result.assignedToId, "new ticket was assigned to your queue");
+      await this.safeRecomputeStaffQueue(result.assignedToId, "new ticket was assigned to your queue");
     }
 
     return result;
@@ -462,7 +474,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await EtaService.recomputeStaffQueue(ticket.assignedToId, "work started on site");
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "work started on site");
     }
 
     return res;
@@ -550,7 +562,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await EtaService.recomputeStaffQueue(
+      await this.safeRecomputeStaffQueue(
         ticket.assignedToId,
         `ticket priority changed to ${priority}`
       );
@@ -663,9 +675,9 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await EtaService.recomputeStaffQueue(ticket.assignedToId, "ticket reassigned away from queue");
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ticket reassigned away from queue");
     }
-    await EtaService.recomputeStaffQueue(newStaffId, "ticket reassigned to queue");
+    await this.safeRecomputeStaffQueue(newStaffId, "ticket reassigned to queue");
 
     return res;
   }
@@ -766,7 +778,7 @@ export class TicketsService {
       return { success: true, status: TicketStatus.ASSIGNED, assignedToId: staffId };
     }, TX_OPTIONS);
 
-    await EtaService.recomputeStaffQueue(staffId, "ticket assigned to queue");
+    await this.safeRecomputeStaffQueue(staffId, "ticket assigned to queue");
 
     return res;
   }
@@ -834,7 +846,7 @@ export class TicketsService {
     }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
-      await EtaService.recomputeStaffQueue(ticket.assignedToId, "ticket rejected and removed from queue");
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ticket rejected and removed from queue");
     }
 
     return res;

@@ -101,7 +101,11 @@ export class TicketsService {
         throw new AppError(
           409,
           "DUPLICATE_ROOM_TICKET",
-          `Your roommate already reported an active ticket (${existingOpenRoomTicket.code}) for this issue.`
+          `Your roommate already reported an active ticket (${existingOpenRoomTicket.code}) for this issue.`,
+          {
+            existingTicketId: existingOpenRoomTicket.id,
+            existingTicketCode: existingOpenRoomTicket.code,
+          }
         );
       }
     } else {
@@ -152,13 +156,14 @@ export class TicketsService {
             createdAt: t.createdAt,
           }));
 
-          const err = new AppError(
+          throw new AppError(
             409,
             "SIMILAR_TICKETS_EXIST",
-            "Similar common area issues have recently been reported on this floor."
+            "Similar common area issues have recently been reported on this floor.",
+            {
+              similarTickets: formattedSimilar,
+            }
           );
-          (err as any).similarTickets = formattedSimilar;
-          throw err;
         }
       }
     }

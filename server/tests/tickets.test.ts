@@ -87,6 +87,7 @@ describe("TicketsService Core Logic & Concurrency", () => {
         expect(err.statusCode).toBe(409);
         expect(err.code).toBe("DUPLICATE_ROOM_TICKET");
         expect(err.message).toContain("HD-0012");
+        expect(err.details?.existingTicketId).toBe("existing-ticket-1");
       }
     });
 
@@ -148,8 +149,8 @@ describe("TicketsService Core Logic & Concurrency", () => {
         expect(err).toBeInstanceOf(AppError);
         expect(err.statusCode).toBe(409);
         expect(err.code).toBe("SIMILAR_TICKETS_EXIST");
-        expect((err as any).similarTickets).toBeDefined();
-        expect((err as any).similarTickets.length).toBe(1);
+        expect(err.details?.similarTickets).toBeDefined();
+        expect(err.details?.similarTickets.length).toBe(1);
       }
     });
 

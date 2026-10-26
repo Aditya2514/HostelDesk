@@ -3,12 +3,14 @@ const BASE_URL = import.meta.env.VITE_API_URL || "";
 export class ApiError extends Error {
   public code: string;
   public status: number;
+  public details?: any;
 
-  constructor(message: string, code: string = "UNKNOWN_ERROR", status: number = 500) {
+  constructor(message: string, code: string = "UNKNOWN_ERROR", status: number = 500, details?: any) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -62,7 +64,8 @@ export async function apiRequest<T = any>(
     const errorData = jsonResult?.error;
     const message = errorData?.message || jsonResult?.message || "An unexpected error occurred";
     const code = errorData?.code || "ERROR";
-    throw new ApiError(message, code, response.status);
+    const details = errorData?.details !== undefined ? errorData.details : jsonResult?.details;
+    throw new ApiError(message, code, response.status, details);
   }
 
   return jsonResult as T;

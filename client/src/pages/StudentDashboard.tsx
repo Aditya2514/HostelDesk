@@ -31,7 +31,11 @@ export const StudentDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"ROOM" | "COMMON">("ROOM");
 
   // Duplicate error state
-  const [duplicateRoomError, setDuplicateRoomError] = useState<string | null>(null);
+  const [duplicateRoomError, setDuplicateRoomError] = useState<{
+    message: string;
+    existingTicketId?: string;
+    existingTicketCode?: string;
+  } | null>(null);
   const [similarTicketsModal, setSimilarTicketsModal] = useState<{
     tickets: Array<{ id: string; code: string; title: string; commonSpot: string; followerCount: number }>;
   } | null>(null);
@@ -65,10 +69,15 @@ export const StudentDashboard: React.FC = () => {
       navigate(`/tickets/${res.ticket.id}`);
     },
     onError: (err: any) => {
+      const similar = err.details?.similarTickets || err.similarTickets;
       if (err.code === "DUPLICATE_ROOM_TICKET") {
-        setDuplicateRoomError(err.message);
-      } else if (err.code === "SIMILAR_TICKETS_EXIST" && err.similarTickets) {
-        setSimilarTicketsModal({ tickets: err.similarTickets });
+        setDuplicateRoomError({
+          message: err.message,
+          existingTicketId: err.details?.existingTicketId,
+          existingTicketCode: err.details?.existingTicketCode,
+        });
+      } else if (err.code === "SIMILAR_TICKETS_EXIST" && similar && similar.length > 0) {
+        setSimilarTicketsModal({ tickets: similar });
       } else {
         setFormError(err.message || "Failed to create ticket");
       }
@@ -272,16 +281,31 @@ export const StudentDashboard: React.FC = () => {
                     <AlertCircle className="w-4 h-4 text-amber-400" />
                     <span>Your roommate already reported this!</span>
                   </div>
-                  <p className="text-slate-300 mb-3">{duplicateRoomError}</p>
-                  <button
-                    onClick={() => {
-                      setShowModal(false);
-                      setActiveTab("ROOM");
-                    }}
-                    className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg font-semibold text-xs transition"
-                  >
-                    View Room Complaints
-                  </button>
+                  <p className="text-slate-300 mb-3">{duplicateRoomError.message}</p>
+                  <div className="flex items-center space-x-2">
+                    {duplicateRoomError.existingTicketId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowModal(false);
+                          navigate(`/tickets/${duplicateRoomError.existingTicketId}`);
+                        }}
+                        className="px-3 py-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-lg font-bold text-xs transition"
+                      >
+                        View Ticket {duplicateRoomError.existingTicketCode ? `(${duplicateRoomError.existingTicketCode})` : ""}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModal(false);
+                        setActiveTab("ROOM");
+                      }}
+                      className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg font-semibold text-xs transition"
+                    >
+                      All Room Complaints
+                    </button>
+                  </div>
                 </div>
               )}
 

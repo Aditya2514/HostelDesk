@@ -153,7 +153,7 @@ export const Header: React.FC = () => {
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               title="Notifications"
-              className="relative p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition"
+              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition"
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -224,11 +224,11 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Logout button */}
+          {/* Logout button (min 44px tap target) */}
           <button
             onClick={handleLogout}
             title="Log out"
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Logout</span>

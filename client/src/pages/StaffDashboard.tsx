@@ -220,32 +220,32 @@ export const StaffDashboard: React.FC = () => {
 
                     <span className="flex items-center space-x-1">
                       <Clock className="w-3.5 h-3.5 text-rose-400" />
-                      <span>Due: {new Date(ticket.dueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>Due: {formatFriendlyIst(ticket.dueAt)}</span>
                     </span>
 
                     <span className="flex items-center space-x-1">
                       <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                      <span>{formatFriendlyIst(ticket.createdAt)}</span>
                     </span>
                   </div>
                 </div>
 
-                {/* Mobile-friendly Action Buttons */}
+                {/* Mobile-friendly Action Buttons (min 44px tap targets) */}
                 <div className="flex items-center space-x-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800">
                   {ticket.status === "ASSIGNED" && (
                     <button
                       onClick={() => startWorkMutation.mutate(ticket.id)}
                       disabled={startWorkMutation.isPending}
-                      className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-amber-600/20 transition disabled:opacity-50"
+                      className="flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-amber-600/20 transition disabled:opacity-50"
                     >
                       <Play className="w-3.5 h-3.5" />
-                      <span>Start Work</span>
+                      <span>{startWorkMutation.isPending ? "Starting..." : "Start Work"}</span>
                     </button>
                   )}
 
                   <button
                     onClick={() => navigate(`/tickets/${ticket.id}`)}
-                    className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
                     title="View Ticket Details"
                   >
                     <ChevronRight className="w-4 h-4" />

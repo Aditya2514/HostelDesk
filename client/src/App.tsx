@@ -45,11 +45,42 @@ const RootRedirect: React.FC = () => {
   return <Navigate to={getDashboardRoute(user.role)} replace />;
 };
 
+import { useLocation } from "react-router-dom";
+
+const RouteTitle: React.FC = () => {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const path = location.pathname;
+    let title = "HostelDesk — Room & Facility Complaint Management";
+
+    if (path === "/login") {
+      title = "Sign In — HostelDesk";
+    } else if (path === "/student") {
+      title = "Student Portal — HostelDesk";
+    } else if (path === "/staff") {
+      title = "Technician Queue — HostelDesk";
+    } else if (path === "/warden") {
+      title = "Warden Control Center — HostelDesk";
+    } else if (path === "/admin") {
+      title = "Admin Management — HostelDesk";
+    } else if (path.startsWith("/tickets/")) {
+      title = "Ticket Details — HostelDesk";
+    } else if (path === "/forbidden") {
+      title = "403 Access Forbidden — HostelDesk";
+    }
+    document.title = title;
+  }, [location.pathname]);
+
+  return null;
+};
+
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          <RouteTitle />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<LoginPage />} />

@@ -804,7 +804,38 @@ export class TicketsService {
   static async getTicket(ticketId: string, user: AuthenticatedUser) {
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
-      include: {
+      select: {
+        id: true,
+        number: true,
+        code: true,
+        locationType: true,
+        roomId: true,
+        blockId: true,
+        floor: true,
+        commonSpot: true,
+        categoryId: true,
+        priority: true,
+        title: true,
+        description: true,
+        status: true,
+        closeReason: true,
+        raisedById: true,
+        assignedToId: true,
+        parentTicketId: true,
+        dueAt: true,
+        pausedAt: true,
+        totalPausedMinutes: true,
+        escalationLevel: true,
+        escalatedAt: true,
+        reopenCount: true,
+        lockedVisitCount: true,
+        preferredSlotStart: true,
+        preferredSlotEnd: true,
+        startedAt: true,
+        resolvedAt: true,
+        closedAt: true,
+        createdAt: true,
+        updatedAt: true,
         room: { select: { id: true, number: true, floor: true } },
         block: { select: { id: true, name: true } },
         category: { select: { id: true, name: true, trade: true, slaMinutes: true, defaultPriority: true } },
@@ -819,7 +850,7 @@ export class TicketsService {
       throw new AppError(404, "NOT_FOUND", "Ticket not found");
     }
 
-    TicketAccessService.assertCanView(user, ticket);
+    TicketAccessService.assertCanView(user, ticket as any);
 
     const isFollowing = ticket.followers.some((f) => f.userId === user.id);
 
@@ -904,7 +935,31 @@ export class TicketsService {
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          number: true,
+          code: true,
+          locationType: true,
+          roomId: true,
+          blockId: true,
+          floor: true,
+          commonSpot: true,
+          categoryId: true,
+          priority: true,
+          title: true,
+          description: true,
+          status: true,
+          closeReason: true,
+          raisedById: true,
+          assignedToId: true,
+          dueAt: true,
+          escalationLevel: true,
+          reopenCount: true,
+          startedAt: true,
+          resolvedAt: true,
+          closedAt: true,
+          createdAt: true,
+          updatedAt: true,
           category: { select: { id: true, name: true, trade: true } },
           room: { select: { id: true, number: true, floor: true } },
           block: { select: { id: true, name: true } },

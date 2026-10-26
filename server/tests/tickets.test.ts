@@ -227,4 +227,49 @@ describe("TicketsService Core Logic & Concurrency", () => {
       }
     });
   });
+
+  describe("Sensitive Fields Omission (getTicket & listTickets)", () => {
+    it("never returns completionCode, codeFailedAttempts, codeBlockedUntil or passwordHash", async () => {
+      // Mock getTicket DB response
+      vi.mocked(prisma.ticket.findUnique).mockResolvedValueOnce({
+        id: "ticket-sec-1",
+        code: "HD-0001",
+        title: "Leaky pipe",
+        roomId: "room-a-301",
+        locationType: LocationType.ROOM,
+        status: TicketStatus.ASSIGNED,
+        raisedById: mockStudent.id,
+        followers: [],
+        _count: { followers: 0, comments: 0 },
+        // Notice: even if DB driver returned sensitive columns, service should not leak them
+      } as any);
+
+      const ticket = await TicketsService.getTicket("ticket-sec-1", mockStudent);
+
+      expect((ticket as any).completionCode).toBeUndefined();
+      expect((ticket as any).codeFailedAttempts).toBeUndefined();
+      expect((ticket as any).codeBlockedUntil).toBeUndefined();
+      expect((ticket as any).passwordHash).toBeUndefined();
+
+      // Mock listTickets DB response
+      vi.mocked(prisma.ticket.findMany).mockResolvedValueOnce([
+        {
+          id: "ticket-sec-1",
+          code: "HD-0001",
+          title: "Leaky pipe",
+          status: TicketStatus.ASSIGNED,
+          _count: { followers: 0, comments: 0 },
+        } as any,
+      ]);
+      vi.mocked(prisma.ticket.count).mockResolvedValueOnce(1);
+
+      const listResult = await TicketsService.listTickets(mockStudent, { page: 1, limit: 10 });
+      const firstItem = listResult.tickets[0];
+
+      expect((firstItem as any).completionCode).toBeUndefined();
+      expect((firstItem as any).codeFailedAttempts).toBeUndefined();
+      expect((firstItem as any).codeBlockedUntil).toBeUndefined();
+      expect((firstItem as any).passwordHash).toBeUndefined();
+    });
+  });
 });

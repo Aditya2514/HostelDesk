@@ -1,0 +1,346 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  STAFF
+  WARDEN
+  CHIEF_WARDEN
+  ADMIN
+}
+
+enum Trade {
+  ELECTRICIAN
+  PLUMBER
+  CARPENTER
+  NETWORK
+  HOUSEKEEPING
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  URGENT
+}
+
+enum TicketStatus {
+  RAISED
+  ASSIGNED
+  IN_PROGRESS
+  AWAITING_ACCESS
+  ON_HOLD
+  RESOLVED
+  AWAITING_VERIFICATION
+  CLOSED
+  REOPENED
+  REJECTED
+}
+
+enum CloseReason {
+  CONFIRMED
+  AUTO_CLOSED
+  UNABLE_TO_ACCESS
+  WARDEN_DECISION
+}
+
+enum LocationType {
+  ROOM
+  COMMON
+}
+
+enum AttachmentKind {
+  BEFORE
+  AFTER
+  DOOR
+}
+
+enum DisputeType {
+  FIX_NOT_DONE
+  LOCKED_CLAIM_FALSE
+  CODE_REFUSED
+}
+
+enum DisputeStatus {
+  OPEN
+  UPHELD
+  REJECTED
+}
+
+enum EventType {
+  STATUS_CHANGE
+  ASSIGNED
+  REASSIGNED
+  PRIORITY_CHANGED
+  ACCESS_REQUESTED
+  SLOT_CHOSEN
+  ON_HOLD
+  RESUMED
+  COMPLETION_CODE_VERIFIED
+  CODE_ATTEMPT_FAILED
+  CODE_BLOCKED
+  PHOTO_UPLOADED
+  VERIFIED
+  REOPENED
+  DISPUTE_RAISED
+  DISPUTE_DECIDED
+  ESCALATED
+  AUTO_CLOSED
+  COMMENT_ADDED
+}
+
+model User {
+  id           String          @id @default(uuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         Role
+  trade        Trade?
+  blockId      String?
+  block        Block?          @relation(fields: [blockId], references: [id])
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+
+  occupancies       RoomOccupancy[]
+  shifts            StaffShift[]
+  raisedTickets     Ticket[]           @relation("RaisedBy")
+  assignedTickets   Ticket[]           @relation("AssignedTo")
+  followedTickets   TicketFollower[]
+  ticketEvents      TicketEvent[]
+  attachments       Attachment[]
+  comments          Comment[]
+  disputesRaised    Dispute[]          @relation("DisputeRaisedBy")
+  disputesDecided   Dispute[]          @relation("DisputeDecidedBy")
+  predictions       TicketPrediction[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g. "A", "B", "C"
+  rooms     Room[]
+  users     User[]
+  tickets   Ticket[]
+
+  @@map("blocks")
+}
+
+model Room {
+  id          String          @id @default(uuid())
+  blockId     String
+  block       Block           @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  floor       Int
+  number      String          // e.g. "101", "301"
+  occupancies RoomOccupancy[]
+  tickets     Ticket[]
+
+  @@unique([blockId, number])
+  @@map("rooms")
+}
+
+model RoomOccupancy {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId    String
+  room      Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  fromDate  DateTime
+  toDate    DateTime?
+
+  @@index([roomId, toDate])
+  @@index([userId, toDate])
+  @@map("room_occupancy")
+}
+
+model Category {
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  trade              Trade
+  defaultPriority    Priority
+  defaultDurationMin Int
+  slaMinutes         Int
+  isActive           Boolean  @default(true)
+  tickets            Ticket[]
+
+  @@map("categories")
+}
+
+model StaffShift {
+  id          String @id @default(uuid())
+  staffId     String
+  staff       User   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  weekday     Int    // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+  startMinute Int    // minutes from midnight (e.g. 540 for 9:00 AM)
+  endMinute   Int    // minutes from midnight (e.g. 1080 for 6:00 PM)
+
+  @@index([staffId, weekday])
+  @@map("staff_shifts")
+}
+
+model Ticket {
+  id                 String          @id @default(uuid())
+  code               String          @unique // e.g. "HD-0042"
+  locationType       LocationType
+  roomId             String?
+  room               Room?           @relation(fields: [roomId], references: [id])
+  blockId            String
+  block              Block           @relation(fields: [blockId], references: [id])
+  floor              Int
+  commonSpot         String?
+  categoryId         String
+  category           Category        @relation(fields: [categoryId], references: [id])
+  priority           Priority
+  title              String
+  description        String
+  status             TicketStatus    @default(ASSIGNED)
+  closeReason        CloseReason?
+  raisedById         String
+  raisedBy           User            @relation("RaisedBy", fields: [raisedById], references: [id])
+  assignedToId       String?
+  assignedTo         User?           @relation("AssignedTo", fields: [assignedToId], references: [id])
+  parentTicketId     String?
+  parentTicket       Ticket?         @relation("GroupedTickets", fields: [parentTicketId], references: [id])
+  childTickets       Ticket[]        @relation("GroupedTickets")
+
+  dueAt              DateTime
+  pausedAt           DateTime?
+  totalPausedMinutes Int             @default(0)
+  escalationLevel    Int             @default(0)
+  escalatedAt        DateTime?
+  reopenCount        Int             @default(0)
+  lockedVisitCount   Int             @default(0)
+  preferredSlotStart DateTime?
+  preferredSlotEnd   DateTime?
+  completionCode     String?
+  codeFailedAttempts Int             @default(0)
+  codeBlockedUntil   DateTime?
+  startedAt          DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  followers          TicketFollower[]
+  events             TicketEvent[]
+  attachments        Attachment[]
+  comments           Comment[]
+  disputes           Dispute[]
+  predictions        TicketPrediction[]
+  notifications      Notification[]
+
+  @@index([status])
+  @@index([assignedToId, status])
+  @@index([blockId, floor, categoryId, createdAt])
+  @@map("tickets")
+}
+
+model TicketFollower {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, userId])
+  @@map("ticket_followers")
+}
+
+model TicketEvent {
+  id         String        @id @default(uuid())
+  ticketId   String
+  ticket     Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actor      User?         @relation(fields: [actorId], references: [id])
+  fromStatus TicketStatus?
+  toStatus   TicketStatus?
+  type       EventType
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_events")
+}
+
+model Attachment {
+  id         String         @id @default(uuid())
+  ticketId   String
+  ticket     Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploaderId String
+  uploader   User           @relation(fields: [uploaderId], references: [id])
+  url        String
+  kind       AttachmentKind
+  createdAt  DateTime       @default(now())
+
+  @@index([ticketId])
+  @@map("attachments")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("comments")
+}
+
+model Dispute {
+  id          String        @id @default(uuid())
+  ticketId    String
+  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  raisedById  String
+  raisedBy    User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
+  type        DisputeType
+  reason      String
+  status      DisputeStatus @default(OPEN)
+  decidedById String?
+  decidedBy   User?         @relation("DisputeDecidedBy", fields: [decidedById], references: [id])
+  decidedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([ticketId])
+  @@map("disputes")
+}
+
+model TicketPrediction {
+  id            String   @id @default(uuid())
+  ticketId      String
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  staffId       String
+  staff         User     @relation(fields: [staffId], references: [id])
+  predictedP50At DateTime
+  predictedP80At DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([staffId])
+  @@map("ticket_predictions")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticketId  String?
+  ticket    Ticket?   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}

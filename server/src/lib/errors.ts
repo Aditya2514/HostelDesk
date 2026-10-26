@@ -29,6 +29,7 @@ export const errorHandler = (
         message: err.message,
         ...(err.details !== undefined ? { details: err.details } : {}),
       },
+      ...(err.details !== undefined ? { details: err.details } : {}),
     });
     return;
   }

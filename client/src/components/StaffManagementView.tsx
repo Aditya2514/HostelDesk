@@ -82,8 +82,9 @@ export const StaffManagementView: React.FC = () => {
       setOpenTicketsToReassign([]);
     },
     onError: (err: any) => {
-      if (err?.code === "HAS_OPEN_TICKETS" && err?.details?.openTickets) {
-        setOpenTicketsToReassign(err.details.openTickets);
+      const tickets = err?.details?.openTickets || err?.openTickets || err?.error?.details?.openTickets;
+      if (tickets && Array.isArray(tickets)) {
+        setOpenTicketsToReassign(tickets);
       }
     },
   });

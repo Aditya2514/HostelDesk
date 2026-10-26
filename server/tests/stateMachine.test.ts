@@ -81,4 +81,52 @@ describe("Ticket State Machine", () => {
       })
     ).not.toThrow();
   });
+
+  it("supports Phase 4 CLOSED -> REOPENED for student disputes and warden inspections", () => {
+    // Student can reopen closed ticket with reason (dispute-wins rule)
+    expect(() =>
+      assertTransition(TicketStatus.CLOSED, TicketStatus.REOPENED, Role.STUDENT, {
+        reason: "Roommate reported it fixed but leak is still ongoing",
+      })
+    ).not.toThrow();
+
+    // Student without reason -> fails
+    expect(() =>
+      assertTransition(TicketStatus.CLOSED, TicketStatus.REOPENED, Role.STUDENT)
+    ).toThrowError(AppError);
+
+    // Warden can reopen closed ticket with reason (warden inspection found problem)
+    expect(() =>
+      assertTransition(TicketStatus.CLOSED, TicketStatus.REOPENED, Role.WARDEN, {
+        reason: "Warden inspection found paint peeling and dampness still present",
+      })
+    ).not.toThrow();
+
+    // Staff cannot reopen closed ticket
+    expect(() =>
+      assertTransition(TicketStatus.CLOSED, TicketStatus.REOPENED, Role.STAFF, {
+        reason: "Staff wanting to reopen",
+      })
+    ).toThrowError(AppError);
+  });
+
+  it("supports Phase 4 IN_PROGRESS -> CLOSED for warden code-refusal decisions", () => {
+    // Warden can close directly from IN_PROGRESS when code-refusal dispute is upheld
+    expect(() =>
+      assertTransition(TicketStatus.IN_PROGRESS, TicketStatus.CLOSED, Role.WARDEN)
+    ).not.toThrow();
+
+    expect(() =>
+      assertTransition(TicketStatus.IN_PROGRESS, TicketStatus.CLOSED, Role.CHIEF_WARDEN)
+    ).not.toThrow();
+
+    // Staff and student cannot close directly from IN_PROGRESS
+    expect(() =>
+      assertTransition(TicketStatus.IN_PROGRESS, TicketStatus.CLOSED, Role.STAFF)
+    ).toThrowError(AppError);
+
+    expect(() =>
+      assertTransition(TicketStatus.IN_PROGRESS, TicketStatus.CLOSED, Role.STUDENT)
+    ).toThrowError(AppError);
+  });
 });

@@ -98,6 +98,14 @@ enum EventType {
   DISPUTE_DECIDED
   ESCALATED
   AUTO_CLOSED
+  CODE_VERIFIED
+  CODE_FAILED
+  PHOTO_ADDED
+  ROOM_LOCKED
+  ACCESS_RESPONDED
+  CONFIRMED
+  DISPUTED
+  WARDEN_VERIFIED
 }
 
 model User {
@@ -238,6 +246,7 @@ model Ticket {
   lockedVisitCount   Int             @default(0)
   preferredSlotStart DateTime?
   preferredSlotEnd   DateTime?
+  priorityBoostUntil DateTime?
   completionCode     String?
   codeFailedAttempts Int             @default(0)
   codeBlockedUntil   DateTime?
@@ -297,6 +306,7 @@ model Attachment {
   uploaderId String
   uploader   User           @relation(fields: [uploaderId], references: [id])
   url        String
+  publicId   String
   kind       AttachmentKind
   createdAt  DateTime       @default(now())
 
@@ -318,18 +328,19 @@ model Comment {
 }
 
 model Dispute {
-  id          String        @id @default(uuid())
-  ticketId    String
-  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  raisedById  String
-  raisedBy    User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
-  type        DisputeType
-  reason      String
-  status      DisputeStatus @default(OPEN)
-  decidedById String?
-  decidedBy   User?         @relation("DisputeDecidedBy", fields: [decidedById], references: [id])
-  decidedAt   DateTime?
-  createdAt   DateTime      @default(now())
+  id           String        @id @default(uuid())
+  ticketId     String
+  ticket       Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  raisedById   String
+  raisedBy     User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
+  type         DisputeType
+  reason       String
+  status       DisputeStatus @default(OPEN)
+  decidedById  String?
+  decidedBy    User?         @relation("DisputeDecidedBy", fields: [decidedById], references: [id])
+  decisionNote String?
+  decidedAt    DateTime?
+  createdAt    DateTime      @default(now())
 
   @@index([ticketId])
   @@map("disputes")

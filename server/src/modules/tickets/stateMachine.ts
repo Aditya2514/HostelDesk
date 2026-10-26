@@ -53,9 +53,13 @@ export const TRANSITIONS: TransitionRule[] = [
   { from: TicketStatus.AWAITING_VERIFICATION, to: TicketStatus.CLOSED, allowedRoles: [Role.STUDENT, "SYSTEM", Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] },
   { from: TicketStatus.AWAITING_ACCESS, to: TicketStatus.CLOSED, allowedRoles: ["SYSTEM"] }, // 48h unresponsive room
 
-  // Reopening ticket (dispute within 48h)
+  // Reopening ticket (dispute within 48h, dispute-wins rule for closed tickets, or warden check)
   { from: TicketStatus.RESOLVED, to: TicketStatus.REOPENED, allowedRoles: [Role.STUDENT], requiresReason: true },
   { from: TicketStatus.AWAITING_VERIFICATION, to: TicketStatus.REOPENED, allowedRoles: [Role.STUDENT], requiresReason: true },
+  { from: TicketStatus.CLOSED, to: TicketStatus.REOPENED, allowedRoles: [Role.STUDENT, Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN], requiresReason: true },
+
+  // Warden closes ticket directly when code-refusal dispute is upheld
+  { from: TicketStatus.IN_PROGRESS, to: TicketStatus.CLOSED, allowedRoles: [Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] },
 
   // Re-routed reopened ticket
   { from: TicketStatus.REOPENED, to: TicketStatus.ASSIGNED, allowedRoles: ["SYSTEM", Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] },

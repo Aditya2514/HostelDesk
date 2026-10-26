@@ -190,6 +190,12 @@ model StaffShift {
   @@map("staff_shifts")
 }
 
+enum ResolutionMethod {
+  CODE
+  PHOTO
+  WARDEN
+}
+
 model Ticket {
   id                 String          @id @default(uuid())
   number             Int             @unique @default(autoincrement())
@@ -215,6 +221,13 @@ model Ticket {
   parentTicketId     String?
   parentTicket       Ticket?         @relation("GroupedTickets", fields: [parentTicketId], references: [id])
   childTickets       Ticket[]        @relation("GroupedTickets")
+
+  etaP50At           DateTime?
+  etaP80At           DateTime?
+  etaNotifiedP50At   DateTime?
+  actualWorkMinutes  Int?
+  resolutionMethod   ResolutionMethod?
+  isSynthetic        Boolean         @default(false)
 
   dueAt              DateTime
   pausedAt           DateTime?
@@ -245,6 +258,7 @@ model Ticket {
   @@index([status])
   @@index([assignedToId, status])
   @@index([blockId, floor, categoryId, createdAt])
+  @@index([categoryId, blockId, resolutionMethod])
   @@map("tickets")
 }
 

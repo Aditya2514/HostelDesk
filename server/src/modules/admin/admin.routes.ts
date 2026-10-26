@@ -102,4 +102,45 @@ router.post("/occupancy/:id/end", async (req: Request, res: Response, next: Next
   }
 });
 
+import multer from "multer";
+import { CsvImportService } from "./csv-import.service";
+
+const uploadCsv = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1024 * 1024 }, // 1 MB
+});
+
+/**
+ * POST /api/admin/import/students?mode=preview|apply
+ * Multipart CSV upload (max 1 MB, max 1000 rows)
+ * preview: returns validation status for each row
+ * apply: atomic all-or-nothing transaction, returns temporary passwords CSV
+ */
+router.post(
+  "/import/students",
+  uploadCsv.single("file"),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          error: { code: "FILE_REQUIRED", message: "CSV file is required" },
+        });
+      }
+      const csvContent = req.file.buffer.toString("utf8");
+      const mode = (req.query.mode as string) || "preview";
+
+      if (mode === "apply") {
+        const result = await CsvImportService.applyImport(req.user!.id, csvContent);
+        return res.json(result);
+      } else {
+        const result = await CsvImportService.validateCsv(csvContent);
+        return res.json(result);
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 export { router as adminRoutes };
+

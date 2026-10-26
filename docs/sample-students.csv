@@ -1,0 +1,9 @@
+email,name,block,room,fromDate
+valid.new1@example.com,Vikas Sharma,B,201,2026-11-01
+valid.new2@example.com,Priya Patel,B,201,2026-11-01
+bad-email-format,Invalid Email Student,A,102,2026-11-01
+ghost.student@example.com,Unknown Room Student,Z,999,2026-11-01
+bad.date@example.com,Invalid Date Student,A,103,not-a-valid-date
+duplicate.student@example.com,Duplicate Student 1,B,202,2026-11-01
+duplicate.student@example.com,Duplicate Student 2,B,202,2026-11-01
+overflow.student@example.com,Overflow Student,A,101,2026-11-01

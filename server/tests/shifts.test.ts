@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { addWorkingMinutes, nextWorkingInstant, ShiftWindow } from "../src/modules/scheduling/shifts";
+import { addWorkingMinutes, nextWorkingInstant, workingMinutesBetween, ShiftWindow } from "../src/modules/scheduling/shifts";
 
 describe("Shift Calendar & Working-Time Arithmetic (IST)", () => {
   // Standard weekday shifts: 09:00 - 13:00 (540 - 780) & 14:00 - 18:00 (840 - 1080)
@@ -63,4 +63,44 @@ describe("Shift Calendar & Working-Time Arithmetic (IST)", () => {
     const next = nextWorkingInstant(start, []);
     expect(next).toBeNull();
   });
+
+  describe("workingMinutesBetween", () => {
+    it("counts only working minutes inside shift: Mon 17:50 IST to Tue 09:20 IST is 30 min, not 15.5 hours", () => {
+      // Mon 17:50 IST -> 12:20 UTC on 2026-10-26
+      const start = new Date("2026-10-26T12:20:00.000Z");
+      // Tue 09:20 IST -> 03:50 UTC on 2026-10-27
+      const end = new Date("2026-10-27T03:50:00.000Z");
+
+      const worked = workingMinutesBetween(start, end, standardShifts);
+      // 10 min on Mon (17:50 to 18:00) + 20 min on Tue (09:00 to 09:20) = 30 min
+      expect(worked).toBe(30);
+    });
+
+    it("excludes lunch break: Mon 12:00 IST to Mon 14:30 IST is 90 min (1h lunch excluded)", () => {
+      const start = new Date("2026-10-26T06:30:00.000Z"); // 12:00 IST
+      const end = new Date("2026-10-26T09:00:00.000Z");   // 14:30 IST
+
+      const worked = workingMinutesBetween(start, end, standardShifts);
+      expect(worked).toBe(90);
+    });
+
+    it("excludes off days: Tue 17:45 IST to Thu 09:15 IST with Wed off is 30 min", () => {
+      const shiftsWithWedOff = standardShifts.filter((s) => s.weekday !== 3);
+      const start = new Date("2026-10-27T12:15:00.000Z"); // Tue 17:45 IST
+      const end = new Date("2026-10-29T03:45:00.000Z");   // Thu 09:15 IST
+
+      const worked = workingMinutesBetween(start, end, shiftsWithWedOff);
+      // 15 min Tue + 15 min Thu = 30 min
+      expect(worked).toBe(30);
+    });
+
+    it("returns 0 when end <= start or shifts are empty", () => {
+      const d1 = new Date("2026-10-26T06:30:00.000Z");
+      const d2 = new Date("2026-10-26T05:30:00.000Z");
+      expect(workingMinutesBetween(d1, d2, standardShifts)).toBe(0);
+      expect(workingMinutesBetween(d1, d1, standardShifts)).toBe(0);
+      expect(workingMinutesBetween(d2, d1, [])).toBe(0);
+    });
+  });
 });
+

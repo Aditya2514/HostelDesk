@@ -109,6 +109,85 @@ describe("Queue Simulator (Pure)", () => {
     expect(urgentSched!.startAt.toISOString()).toBe("2026-10-26T05:30:00.000Z"); // starts after in-progress
   });
 
+  it("handles multiple IN_PROGRESS jobs, scheduling all first, oldest startedAt first", () => {
+    // Now is 10:30 IST. Two jobs in progress:
+    // Job 1: started at 09:30 IST (1h worked), duration 90m -> remaining 30m
+    // Job 2: started at 10:00 IST (30m worked), duration 45m -> remaining 15m
+    const now = new Date("2026-10-26T05:00:00.000Z"); // 10:30 IST
+    const startedAt1 = new Date("2026-10-26T04:00:00.000Z"); // 09:30 IST
+    const startedAt2 = new Date("2026-10-26T04:30:00.000Z"); // 10:00 IST
+
+    const jobs: SimulatorJob[] = [
+      {
+        ticketId: "urgent-waiting",
+        priority: "URGENT",
+        createdAt: new Date("2026-10-26T01:00:00.000Z"),
+        durationMinutes: 20,
+        status: "ASSIGNED",
+      },
+      {
+        ticketId: "in-prog-2",
+        priority: "LOW",
+        createdAt: new Date("2026-10-26T03:00:00.000Z"),
+        durationMinutes: 45,
+        status: "IN_PROGRESS",
+        startedAt: startedAt2,
+      },
+      {
+        ticketId: "in-prog-1",
+        priority: "NORMAL",
+        createdAt: new Date("2026-10-26T02:00:00.000Z"),
+        durationMinutes: 90,
+        status: "IN_PROGRESS",
+        startedAt: startedAt1,
+      },
+    ];
+
+    const schedule = simulateQueue({ now, shifts: monTueShifts, jobs });
+
+    const sched1 = schedule.get("in-prog-1")!;
+    const sched2 = schedule.get("in-prog-2")!;
+    const schedUrgent = schedule.get("urgent-waiting")!;
+
+    // in-prog-1 (oldest startedAt) starts at now (10:30 IST), takes 30m -> finishes 11:00 IST
+    expect(sched1.startAt.toISOString()).toBe("2026-10-26T05:00:00.000Z");
+    expect(sched1.finishAt.toISOString()).toBe("2026-10-26T05:30:00.000Z");
+
+    // in-prog-2 starts at 11:00 IST, takes 15m -> finishes 11:15 IST
+    expect(sched2.startAt.toISOString()).toBe("2026-10-26T05:30:00.000Z");
+    expect(sched2.finishAt.toISOString()).toBe("2026-10-26T05:45:00.000Z");
+
+    // urgent-waiting starts at 11:15 IST (after all in-progress jobs)
+    expect(schedUrgent.startAt.toISOString()).toBe("2026-10-26T05:45:00.000Z");
+  });
+
+  it("computes in-progress elapsed time strictly from working shift minutes, excluding overnight hours", () => {
+    // Job started Mon 17:50 IST (10m before Mon 18:00 end of shift).
+    // Now is Tue 09:10 IST (10m into Tue 09:00 shift).
+    // Total working minutes worked: 10 + 10 = 20 mins (overnight hours completely excluded!).
+    // Original duration: 50 mins -> remaining = 50 - 20 = 30 mins.
+    const startedAt = new Date("2026-10-26T12:20:00.000Z"); // Mon 17:50 IST
+    const now = new Date("2026-10-27T03:40:00.000Z");       // Tue 09:10 IST
+
+    const jobs: SimulatorJob[] = [
+      {
+        ticketId: "overnight-in-prog",
+        priority: "NORMAL",
+        createdAt: new Date("2026-10-26T10:00:00.000Z"),
+        durationMinutes: 50,
+        status: "IN_PROGRESS",
+        startedAt,
+      },
+    ];
+
+    const schedule = simulateQueue({ now, shifts: monTueShifts, jobs });
+    const sched = schedule.get("overnight-in-prog")!;
+
+    // Starts at now (Tue 09:10 IST), needs 30 mins -> finishes Tue 09:40 IST (04:10 UTC)
+    expect(sched.startAt.toISOString()).toBe("2026-10-27T03:40:00.000Z");
+    expect(sched.finishAt.toISOString()).toBe("2026-10-27T04:10:00.000Z");
+  });
+
   it("ignores ON_HOLD and AWAITING_ACCESS jobs", () => {
     const now = new Date("2026-10-26T04:30:00.000Z");
 

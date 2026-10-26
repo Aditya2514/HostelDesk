@@ -1,4 +1,4 @@
-import { ShiftWindow, addWorkingMinutes, nextWorkingInstant } from "./shifts";
+import { ShiftWindow, addWorkingMinutes, nextWorkingInstant, workingMinutesBetween } from "./shifts";
 
 export type JobPriority = "URGENT" | "NORMAL" | "LOW";
 
@@ -79,17 +79,21 @@ export function simulateQueue({
   // Initial cursor starts at 'now'
   let cursor: Date | null = new Date(now.getTime());
 
-  // 2. An IN_PROGRESS job goes first
-  const inProgressIndex = activeJobs.findIndex((j) => j.status === "IN_PROGRESS");
-  let pendingJobs: SimulatorJob[] = [];
+  // 2. Schedule all IN_PROGRESS jobs first, oldest startedAt first
+  const inProgressJobs = activeJobs.filter((j) => j.status === "IN_PROGRESS");
+  inProgressJobs.sort((a, b) => {
+    const aTime = a.startedAt ? a.startedAt.getTime() : a.createdAt.getTime();
+    const bTime = b.startedAt ? b.startedAt.getTime() : b.createdAt.getTime();
+    return aTime - bTime;
+  });
 
-  if (inProgressIndex !== -1) {
-    const inProgressJob = activeJobs[inProgressIndex];
-    // Remaining time = max(durationMinutes - minutes already worked, 5)
+  for (const inProgressJob of inProgressJobs) {
+    if (!cursor) break;
+
+    // Remaining time = max(durationMinutes - working minutes already worked within shifts, 5)
     let minutesAlreadyWorked = 0;
     if (inProgressJob.startedAt) {
-      const elapsedMs = now.getTime() - inProgressJob.startedAt.getTime();
-      minutesAlreadyWorked = Math.max(0, Math.floor(elapsedMs / (60 * 1000)));
+      minutesAlreadyWorked = workingMinutesBetween(inProgressJob.startedAt, now, shifts);
     }
     const remainingMinutes = Math.max(
       inProgressJob.durationMinutes - minutesAlreadyWorked,
@@ -104,11 +108,9 @@ export function simulateQueue({
         cursor = finishAt;
       }
     }
-
-    pendingJobs = activeJobs.filter((_, idx) => idx !== inProgressIndex);
-  } else {
-    pendingJobs = [...activeJobs];
   }
+
+  let pendingJobs: SimulatorJob[] = activeJobs.filter((j) => j.status !== "IN_PROGRESS");
 
   // 3. Repeatedly choose next job by priority, then oldest createdAt, respecting notBefore
   while (pendingJobs.length > 0 && cursor) {

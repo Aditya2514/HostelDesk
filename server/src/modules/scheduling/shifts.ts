@@ -179,3 +179,64 @@ export function addWorkingMinutes(
 
   return cursor;
 }
+
+/**
+ * Calculates the total active working minutes between two dates (a and b),
+ * counting only time that falls strictly within the staff member's shift windows.
+ * Non-working hours, lunch breaks, and off days are completely excluded.
+ */
+export function workingMinutesBetween(
+  a: Date,
+  b: Date,
+  shifts: ShiftWindow[]
+): number {
+  if (!shifts || shifts.length === 0 || b.getTime() <= a.getTime()) return 0;
+
+  let cursor = nextWorkingInstant(a, shifts);
+  if (!cursor || cursor.getTime() >= b.getTime()) return 0;
+
+  let workedMinutes = 0;
+  const maxLimit = new Date(a.getTime() + MAX_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+
+  while (cursor.getTime() < b.getTime()) {
+    if (cursor.getTime() > maxLimit.getTime()) break;
+
+    const ist = toIstParts(cursor);
+    const activeShift = shifts.find(
+      (s) =>
+        s.weekday === ist.weekday &&
+        ist.minuteOfDay >= s.startMinute &&
+        ist.minuteOfDay < s.endMinute
+    );
+
+    if (!activeShift) {
+      const nextInstant = nextWorkingInstant(cursor, shifts);
+      if (!nextInstant || nextInstant.getTime() >= b.getTime()) break;
+      cursor = nextInstant;
+      continue;
+    }
+
+    const availableMinutesInShift = activeShift.endMinute - ist.minuteOfDay;
+    const endOfShift = fromIstParts(
+      ist.year,
+      ist.month,
+      ist.date,
+      activeShift.endMinute,
+      0,
+      0
+    );
+
+    if (b.getTime() <= endOfShift.getTime()) {
+      const deltaMinutes = (b.getTime() - cursor.getTime()) / (60 * 1000);
+      workedMinutes += Math.max(0, deltaMinutes);
+      break;
+    } else {
+      workedMinutes += availableMinutesInShift;
+      const nextInstant = nextWorkingInstant(endOfShift, shifts);
+      if (!nextInstant || nextInstant.getTime() >= b.getTime()) break;
+      cursor = nextInstant;
+    }
+  }
+
+  return Math.round(workedMinutes);
+}

@@ -475,6 +475,16 @@ export class TicketsService {
       throw new AppError(403, "FORBIDDEN", "Only wardens or administrators can reassign tickets");
     }
 
+    if (!OPEN_STATUSES.includes(ticket.status)) {
+      throw new AppError(
+        409,
+        "INVALID_TRANSITION",
+        `Cannot reassign ticket with status ${ticket.status}. Reassignment is only allowed for open tickets.`
+      );
+    }
+
+    assertTransition(ticket.status, TicketStatus.ASSIGNED, user.role);
+
     // Verify new staff member
     const newStaff = await prisma.user.findUnique({
       where: { id: newStaffId },
@@ -497,20 +507,30 @@ export class TicketsService {
     return await prisma.$transaction(async (tx) => {
       const oldStaffId = ticket.assignedToId;
 
-      const updated = await tx.ticket.update({
-        where: { id: ticketId },
+      // Conditional update for concurrency protection
+      const updated = await tx.ticket.updateMany({
+        where: {
+          id: ticketId,
+          status: ticket.status,
+        },
         data: {
           assignedToId: newStaffId,
           status: TicketStatus.ASSIGNED,
         },
       });
 
+      if (updated.count === 0) {
+        throw new AppError(409, "TICKET_CHANGED", "This ticket was modified by another operation. Please refresh.");
+      }
+
       await tx.ticketEvent.create({
         data: {
           ticketId,
           actorId: user.id,
+          fromStatus: ticket.status,
+          toStatus: TicketStatus.ASSIGNED,
           type: "REASSIGNED",
-          note: `Reassigned to ${newStaff.name} (${newStaff.trade})`,
+          note: `Reassigned from status ${ticket.status} to ASSIGNED (${newStaff.name}, ${newStaff.trade})`,
           createdAt: now,
         },
       });
@@ -534,15 +554,105 @@ export class TicketsService {
         tx
       );
 
-      return updated;
+      return { success: true, status: TicketStatus.ASSIGNED, assignedToId: newStaffId };
     });
   }
 
   /**
-   * Assigns a RAISED ticket with no staff member
+   * Assigns a RAISED ticket with no staff member (allowed only from RAISED)
    */
   static async assignTicket(ticketId: string, staffId: string, user: AuthenticatedUser) {
-    return this.reassign(ticketId, staffId, user);
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (ticket.status !== TicketStatus.RAISED) {
+      throw new AppError(
+        409,
+        "INVALID_TRANSITION",
+        `Manual initial assignment is only allowed from RAISED status (current: ${ticket.status})`
+      );
+    }
+
+    assertTransition(ticket.status, TicketStatus.ASSIGNED, user.role);
+
+    if (user.role === Role.WARDEN && ticket.blockId !== user.blockId) {
+      throw new AppError(403, "FORBIDDEN", "Wardens can only assign tickets in their block");
+    }
+
+    if (!([Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] as Role[]).includes(user.role)) {
+      throw new AppError(403, "FORBIDDEN", "Only wardens or administrators can assign tickets");
+    }
+
+    const staff = await prisma.user.findUnique({
+      where: { id: staffId },
+    });
+
+    if (!staff || !staff.isActive || staff.role !== Role.STAFF) {
+      throw new AppError(400, "INVALID_STAFF", "Selected staff member is not active");
+    }
+
+    if (staff.trade !== ticket.category.trade) {
+      throw new AppError(
+        400,
+        "TRADE_MISMATCH",
+        `Staff member must be of trade ${ticket.category.trade}`
+      );
+    }
+
+    const now = clock.now();
+
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.ticket.updateMany({
+        where: {
+          id: ticketId,
+          status: TicketStatus.RAISED,
+        },
+        data: {
+          assignedToId: staffId,
+          status: TicketStatus.ASSIGNED,
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new AppError(409, "TICKET_CHANGED", "This ticket was modified by another operation. Please refresh.");
+      }
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: TicketStatus.RAISED,
+          toStatus: TicketStatus.ASSIGNED,
+          type: "ASSIGNED",
+          note: `Assigned to ${staff.name} (${staff.trade})`,
+          createdAt: now,
+        },
+      });
+
+      const notifyTargets = new Set<string>();
+      notifyTargets.add(staffId);
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      for (const id of audience) notifyTargets.add(id);
+      notifyTargets.delete(user.id);
+
+      await NotificationService.notify(
+        Array.from(notifyTargets),
+        {
+          ticketId,
+          type: "TICKET_ASSIGNED",
+          message: `Ticket ${ticket.code} assigned to ${staff.name}`,
+        },
+        tx
+      );
+
+      return { success: true, status: TicketStatus.ASSIGNED, assignedToId: staffId };
+    });
   }
 
   /**

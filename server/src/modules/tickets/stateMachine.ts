@@ -25,6 +25,11 @@ export const TRANSITIONS: TransitionRule[] = [
   // Manual or retried assignment
   { from: TicketStatus.RAISED, to: TicketStatus.ASSIGNED, allowedRoles: [Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN, "SYSTEM"] },
 
+  // Warden reassignment from open statuses
+  { from: TicketStatus.ASSIGNED, to: TicketStatus.ASSIGNED, allowedRoles: [Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] },
+  { from: TicketStatus.IN_PROGRESS, to: TicketStatus.ASSIGNED, allowedRoles: [Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] },
+  { from: TicketStatus.ON_HOLD, to: TicketStatus.ASSIGNED, allowedRoles: [Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN] },
+
   // Staff starts work
   { from: TicketStatus.ASSIGNED, to: TicketStatus.IN_PROGRESS, allowedRoles: [Role.STAFF] },
 

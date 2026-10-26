@@ -143,6 +143,13 @@ The ETA engine uses a 2-stage model:
      - **Anil:** Busy queue until tomorrow afternoon = **15:00 IST Tomorrow**.
      - $\implies$ **Routed to Ramesh** (earliest finish time).
 
+3. **Shift-Aware Prediction Error Metric:**
+   Measures accuracy strictly in technician working minutes:
+   $$\text{Error} = \text{workingMinutesBetween}(\min(\text{predicted}, \text{resolved}), \max(\text{predicted}, \text{resolved}), \text{shifts})$$
+   - *Example:* Predicted Mon 17:50, actual Tue 09:20 (shifts 09:00–13:00 / 14:00–18:00).
+   - Wall-clock error = 930 minutes (distorted by 15h of night off-hours).
+   - HostelDesk working error = 10m (Mon) + 20m (Tue) = **30 working minutes**.
+
 *(For detailed math and code references, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))*
 
 ---

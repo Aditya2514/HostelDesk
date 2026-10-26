@@ -112,6 +112,25 @@ $\implies$ **Ramesh is automatically chosen** because 17:30 IST Today is the ear
 
 ---
 
+### Stage 3: Measuring Prediction Accuracy (Shift-Aware Working Minutes)
+
+Prediction error is strictly measured in **working minutes** within that technician's active shift windows:
+$$\text{Prediction Error} = \text{workingMinutesBetween}(\min(\text{predictedP50At}, \text{resolvedAt}), \max(\text{predictedP50At}, \text{resolvedAt}), \text{staffShifts})$$
+
+#### Why Shift-Aware Working Time is Crucial
+Standard wall-clock calculation $|\text{predicted} - \text{resolved}|$ introduces severe distortion whenever a job spans a meal break, overnight off-hours, or a rest day.
+
+- **Worked Example:**
+  - Staff shifts: 09:00–13:00 and 14:00–18:00 IST (Mon–Fri).
+  - Predicted finish: Monday 17:50 IST.
+  - Actual finish: Tuesday 09:20 IST.
+  - **Wall-clock difference:** 15 hours 30 minutes = **930 minutes** (falsely inflating error by counting 15 idle non-working hours).
+  - **HostelDesk Shift-Aware Error:** 10 minutes on Monday (17:50–18:00) + 20 minutes on Tuesday (09:00–09:20) = **30 working minutes**.
+
+This metric is evaluated in Node over window-bounded prediction/resolution pairs fetched in a single indexed SQL query, ensuring exact consistency between the scheduler simulation and historical accuracy analytics.
+
+---
+
 ## 4. Evidence & Dispute Model
 
 - **Room Tickets:** Completed exclusively via a cryptographically random 4-digit code shown only to verified room occupants.

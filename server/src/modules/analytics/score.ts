@@ -1,3 +1,5 @@
+import { ShiftWindow, workingMinutesBetween } from "../scheduling/shifts";
+
 export interface ReliabilityScoreComponents {
   codeVerifiedRate: number;
   slaMetRate: number;
@@ -11,6 +13,37 @@ export interface ReliabilityScoreResult {
   reason?: "INSUFFICIENT_DATA";
   components: ReliabilityScoreComponents;
 }
+
+/**
+ * Calculates prediction error for a resolved ticket in working minutes.
+ *
+ * Prediction error = workingMinutesBetween(min(predicted, resolved), max(predicted, resolved), staffShifts)
+ * This excludes non-working hours, meal breaks, and days off.
+ */
+export function calculatePredictionError(
+  predicted: Date,
+  resolved: Date,
+  shifts: ShiftWindow[]
+): number {
+  const earliest = predicted.getTime() < resolved.getTime() ? predicted : resolved;
+  const latest = predicted.getTime() < resolved.getTime() ? resolved : predicted;
+  return workingMinutesBetween(earliest, latest, shifts);
+}
+
+/**
+ * Computes the continuous median of a list of numeric values.
+ */
+export function computeMedian(values: number[]): number | null {
+  if (!values || values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[mid];
+  } else {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+}
+
 
 /**
  * Pure function to calculate staff reliability score:

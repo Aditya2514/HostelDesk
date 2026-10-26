@@ -2,13 +2,53 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
 import {
+  calculatePredictionError,
   calculateReliabilityScore,
+  computeMedian,
   computeTradeLockedVisitMedians,
   isLockedVisitOutlier,
   resolveAnalyticsScope,
 } from "../src/modules/analytics/score";
+import { ShiftWindow, fromIstParts } from "../src/modules/scheduling/shifts";
 
 describe("Analytics Module — Reliability Score, Outlier Flag & Scope Filter", () => {
+  describe("Prediction Error Metric (Shift-Aware Working Minutes)", () => {
+    // Shifts: Monday & Tuesday: 09:00 - 13:00 and 14:00 - 18:00
+    const shifts: ShiftWindow[] = [
+      // Monday (weekday 1)
+      { weekday: 1, startMinute: 9 * 60, endMinute: 13 * 60 },
+      { weekday: 1, startMinute: 14 * 60, endMinute: 18 * 60 },
+      // Tuesday (weekday 2)
+      { weekday: 2, startMinute: 9 * 60, endMinute: 13 * 60 },
+      { weekday: 2, startMinute: 14 * 60, endMinute: 18 * 60 },
+    ];
+
+    it("matches worked example: predicted Mon 17:50, actual Tue 09:20 -> error 30 working minutes (not 930)", () => {
+      // 2026-10-26 is a Monday
+      const predictedMon1750 = fromIstParts(2026, 9, 26, 17 * 60 + 50); // Mon 17:50 IST
+      const actualTue0920 = fromIstParts(2026, 9, 27, 9 * 60 + 20); // Tue 09:20 IST
+
+      // Wall-clock difference is 15h 30m = 930 minutes
+      const wallClockMinutes =
+        (actualTue0920.getTime() - predictedMon1750.getTime()) / (60 * 1000);
+      expect(wallClockMinutes).toBe(930);
+
+      // Shift working error is 10 min on Mon (17:50-18:00) + 20 min on Tue (09:00-09:20) = 30 min
+      const errorMinutes = calculatePredictionError(predictedMon1750, actualTue0920, shifts);
+      expect(errorMinutes).toBe(30);
+
+      // Symmetric test: predicted Tue 09:20, actual Mon 17:50 -> still 30 working minutes
+      const symmetricError = calculatePredictionError(actualTue0920, predictedMon1750, shifts);
+      expect(symmetricError).toBe(30);
+    });
+
+    it("computes continuous median correctly for even and odd distributions", () => {
+      expect(computeMedian([10, 20, 30])).toBe(20);
+      expect(computeMedian([10, 20, 30, 40])).toBe(25);
+      expect(computeMedian([])).toBeNull();
+    });
+  });
+
   describe("Reliability Score Formula", () => {
     it("matches exact hand-computed Example 1 (84.3)", () => {
       // Inputs:

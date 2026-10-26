@@ -21,6 +21,8 @@ export const OPEN_STATUSES: TicketStatus[] = [
   TicketStatus.REOPENED,
 ];
 
+export const TX_OPTIONS = { timeout: 15000, maxWait: 10000 };
+
 export class TicketsService {
   /**
    * Phase 4 hook: executed when ticket enters IN_PROGRESS.
@@ -179,9 +181,22 @@ export class TicketsService {
     const priority = category.defaultPriority;
     const dueAt = new Date(now.getTime() + category.slaMinutes * 60 * 1000);
 
-    // Run ticket creation in a single transaction
+    // 1. Compute routing BEFORE transaction (read-only queries across candidate staff)
+    const routingResult = await RoutingService.chooseAssignee({
+      categoryId: category.id,
+      blockId,
+      floor,
+      priority,
+      createdAt: now,
+      trade: category.trade,
+    });
+
+    const assignedStaffId = routingResult?.staffId ?? null;
+    const initialStatus = assignedStaffId ? TicketStatus.ASSIGNED : TicketStatus.RAISED;
+
+    // 2. Run ticket creation in transaction with explicit timeout options
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Temporary placeholder code until autoincrement number is returned
+      // Temporary placeholder code until autoincrement number is returned
       const tempCode = `HD-TMP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
       const createdTicket = await tx.ticket.create({
@@ -196,43 +211,23 @@ export class TicketsService {
           priority,
           title: data.title,
           description: data.description,
-          status: TicketStatus.ASSIGNED, // Evaluated with routing below
+          status: initialStatus,
+          assignedToId: assignedStaffId,
           raisedById: user.id,
           dueAt,
           createdAt: now,
-        },
-      });
-
-      // 2. Format human-readable ticket code e.g. HD-0001
-      const formattedCode = `HD-${String(createdTicket.number).padStart(4, "0")}`;
-
-      // 3. Routing: pick staff member with earliest simulated finish
-      const routingResult = await RoutingService.chooseAssignee(
-        {
-          id: createdTicket.id,
-          categoryId: category.id,
-          blockId,
-          floor,
-          priority,
-          createdAt: now,
-          trade: category.trade,
-        },
-        tx
-      );
-
-      const assignedStaffId = routingResult?.staffId ?? null;
-      const finalStatus = assignedStaffId ? TicketStatus.ASSIGNED : TicketStatus.RAISED;
-
-      const updatedTicket = await tx.ticket.update({
-        where: { id: createdTicket.id },
-        data: {
-          code: formattedCode,
-          assignedToId: assignedStaffId,
-          status: finalStatus,
           etaP50At: routingResult?.etaP50At ?? null,
           etaP80At: routingResult?.etaP80At ?? null,
           etaNotifiedP50At: routingResult?.etaP50At ?? null,
         },
+      });
+
+      // Format human-readable ticket code e.g. HD-0001
+      const formattedCode = `HD-${String(createdTicket.number).padStart(4, "0")}`;
+
+      const updatedTicket = await tx.ticket.update({
+        where: { id: createdTicket.id },
+        data: { code: formattedCode },
       });
 
       if (routingResult) {
@@ -301,7 +296,7 @@ export class TicketsService {
       );
 
       return updatedTicket;
-    });
+    }, TX_OPTIONS);
 
     if (result.assignedToId) {
       await EtaService.recomputeStaffQueue(result.assignedToId, "new ticket was assigned to your queue");
@@ -398,7 +393,7 @@ export class TicketsService {
       }
 
       return { success: true, followerCount: updatedCount };
-    });
+    }, TX_OPTIONS);
   }
 
   /**
@@ -464,7 +459,7 @@ export class TicketsService {
       );
 
       return { success: true, status: TicketStatus.IN_PROGRESS };
-    });
+    }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
       await EtaService.recomputeStaffQueue(ticket.assignedToId, "work started on site");
@@ -552,7 +547,7 @@ export class TicketsService {
       );
 
       return updated;
-    });
+    }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
       await EtaService.recomputeStaffQueue(
@@ -665,7 +660,7 @@ export class TicketsService {
       );
 
       return { success: true, status: TicketStatus.ASSIGNED, assignedToId: newStaffId };
-    });
+    }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
       await EtaService.recomputeStaffQueue(ticket.assignedToId, "ticket reassigned away from queue");
@@ -769,7 +764,7 @@ export class TicketsService {
       );
 
       return { success: true, status: TicketStatus.ASSIGNED, assignedToId: staffId };
-    });
+    }, TX_OPTIONS);
 
     await EtaService.recomputeStaffQueue(staffId, "ticket assigned to queue");
 
@@ -836,7 +831,7 @@ export class TicketsService {
       );
 
       return { success: true, status: TicketStatus.REJECTED };
-    });
+    }, TX_OPTIONS);
 
     if (ticket.assignedToId) {
       await EtaService.recomputeStaffQueue(ticket.assignedToId, "ticket rejected and removed from queue");
@@ -899,7 +894,7 @@ export class TicketsService {
       );
 
       return comment;
-    });
+    }, TX_OPTIONS);
   }
 
   static async getComments(ticketId: string, user: AuthenticatedUser) {

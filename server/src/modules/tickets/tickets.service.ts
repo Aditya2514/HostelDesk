@@ -1737,6 +1737,178 @@ export class TicketsService {
   }
 
   /**
+   * Optional Warden Verification for CLOSED tickets.
+   * - "OK": records WARDEN_VERIFIED event, ticket remains CLOSED.
+   * - "PROBLEM": requires note, transitions ticket to REOPENED, reopenCount++, re-routes to staff.
+   */
+  static async wardenCheck(
+    ticketId: string,
+    user: AuthenticatedUser,
+    payload: { result: "OK" | "PROBLEM"; note?: string }
+  ) {
+    if (!payload.result || (payload.result !== "OK" && payload.result !== "PROBLEM")) {
+      throw new AppError(400, "INVALID_RESULT", "Verification result must be OK or PROBLEM");
+    }
+
+    if (payload.result === "PROBLEM" && (!payload.note || !payload.note.trim())) {
+      throw new AppError(400, "REASON_REQUIRED", "A note is required when marking a problem found");
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (user.role === Role.WARDEN && ticket.blockId !== user.blockId) {
+      throw new AppError(403, "FORBIDDEN", "Wardens can only verify tickets in their assigned block");
+    }
+
+    if (ticket.status !== TicketStatus.CLOSED) {
+      throw new AppError(400, "INVALID_STATE", "Only closed tickets can undergo warden verification");
+    }
+
+    const now = clock.now();
+    let oldAssignedStaffId: string | null = null;
+    let newAssignedStaffId: string | null = null;
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (payload.result === "OK") {
+        await tx.ticketEvent.create({
+          data: {
+            ticketId,
+            actorId: user.id,
+            fromStatus: TicketStatus.CLOSED,
+            toStatus: TicketStatus.CLOSED,
+            type: EventType.WARDEN_VERIFIED,
+            note: payload.note ? payload.note.trim() : "Warden marked verified OK",
+            createdAt: now,
+          },
+        });
+
+        return {
+          success: true,
+          status: TicketStatus.CLOSED,
+          result: "OK",
+        };
+      }
+
+      // PROBLEM: reopen ticket
+      assertTransition(ticket.status, TicketStatus.REOPENED, user.role, { reason: payload.note });
+      oldAssignedStaffId = ticket.assignedToId;
+
+      const nextReopenCount = (ticket.reopenCount || 0) + 1;
+
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.REOPENED,
+          reopenCount: nextReopenCount,
+          closedAt: null,
+          closeReason: null,
+          resolvedAt: null,
+          startedAt: null,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: TicketStatus.CLOSED,
+          toStatus: TicketStatus.REOPENED,
+          type: EventType.STATUS_CHANGED,
+          note: `Warden marked problem found: ${payload.note!.trim()}`,
+          createdAt: now,
+        },
+      });
+
+      // Re-route
+      const route = await RoutingService.chooseAssignee(
+        {
+          id: ticketId,
+          categoryId: ticket.categoryId,
+          blockId: ticket.blockId,
+          priority: ticket.priority,
+          createdAt: ticket.createdAt,
+          preferredStaffId: ticket.assignedToId,
+        },
+        tx
+      );
+
+      let finalStatus = TicketStatus.REOPENED;
+
+      if (route) {
+        finalStatus = TicketStatus.ASSIGNED;
+        newAssignedStaffId = route.staffId;
+
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: {
+            status: TicketStatus.ASSIGNED,
+            assignedToId: route.staffId,
+            etaP50At: route.etaP50At,
+            etaP80At: route.etaP80At,
+          },
+        });
+
+        await tx.ticketEvent.create({
+          data: {
+            ticketId,
+            actorId: user.id,
+            fromStatus: TicketStatus.REOPENED,
+            toStatus: TicketStatus.ASSIGNED,
+            type: EventType.STATUS_CHANGED,
+            note: `Reassigned to staff ${route.staffId}`,
+            createdAt: now,
+          },
+        });
+      } else {
+        finalStatus = TicketStatus.RAISED;
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: {
+            status: TicketStatus.RAISED,
+            assignedToId: null,
+            etaP50At: null,
+            etaP80At: null,
+          },
+        });
+      }
+
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "WARDEN_PROBLEM_FOUND",
+          message: `Warden inspected ${ticket.code} and found a problem: ${payload.note!.trim()}`,
+        },
+        tx
+      );
+
+      return {
+        success: true,
+        status: finalStatus,
+        result: "PROBLEM",
+        reopenCount: nextReopenCount,
+      };
+    }, TX_OPTIONS);
+
+    if (oldAssignedStaffId) {
+      await this.safeRecomputeStaffQueue(oldAssignedStaffId, "TICKET_DISPUTED", ticketId);
+    }
+    if (newAssignedStaffId && newAssignedStaffId !== oldAssignedStaffId) {
+      await this.safeRecomputeStaffQueue(newAssignedStaffId, "TICKET_DISPUTED", ticketId);
+    }
+
+    return result;
+  }
+
+  /**
    * Warden or Chief Warden updates priority
    */
   static async updatePriority(

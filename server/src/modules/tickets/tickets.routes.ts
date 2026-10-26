@@ -64,6 +64,11 @@ ticketRouter.post(
   requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
   TicketsController.reject
 );
+ticketRouter.post(
+  "/:id/warden-check",
+  requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
+  TicketsController.wardenCheck
+);
 
 // Comments
 ticketRouter.post("/:id/comments", TicketsController.addComment);

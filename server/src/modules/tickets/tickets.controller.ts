@@ -156,6 +156,24 @@ export class TicketsController {
     }
   }
 
+  static async hold(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.holdTicket(req.params.id, req.user!, req.body?.reason);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async resume(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.resumeTicket(req.params.id, req.user!);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updatePriority(req: Request, res: Response, next: NextFunction) {
     try {
       const parsed = updatePrioritySchema.safeParse(req.body);

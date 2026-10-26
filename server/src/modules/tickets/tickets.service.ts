@@ -1480,6 +1480,177 @@ export class TicketsService {
   }
 
   /**
+   * Puts an IN_PROGRESS ticket on hold (waiting for parts).
+   * Requires reason, pauses SLA, transitions to ON_HOLD, clears ETAs, recomputes queue.
+   */
+  static async holdTicket(ticketId: string, user: AuthenticatedUser, reason: string) {
+    if (!reason || !reason.trim()) {
+      throw new AppError(400, "REASON_REQUIRED", "Reason is required to put a ticket on hold");
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (ticket.assignedToId !== user.id && user.role !== Role.ADMIN) {
+      throw new AppError(403, "FORBIDDEN", "Only the assigned staff member can put this ticket on hold");
+    }
+
+    if (ticket.status !== TicketStatus.IN_PROGRESS) {
+      throw new AppError(
+        400,
+        "INVALID_STATE",
+        `Ticket must be in progress to be put on hold (current: ${ticket.status})`
+      );
+    }
+
+    assertTransition(ticket.status, TicketStatus.ON_HOLD, user.role, { reason });
+
+    const now = clock.now();
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Pause SLA
+      pauseSla(ticket, now);
+
+      const updated = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.ON_HOLD,
+          pausedAt: now,
+          etaP50At: null,
+          etaP80At: null,
+          etaNotifiedP50At: null,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: TicketStatus.IN_PROGRESS,
+          toStatus: TicketStatus.ON_HOLD,
+          type: EventType.ON_HOLD,
+          note: `Put on hold: ${reason.trim()}`,
+          createdAt: now,
+        },
+      });
+
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "TICKET_ON_HOLD",
+          message: `Work paused on ${ticket.code}: ${reason.trim()}`,
+        },
+        tx
+      );
+
+      return {
+        success: true,
+        status: updated.status,
+        pausedAt: updated.pausedAt,
+      };
+    }, TX_OPTIONS);
+
+    if (ticket.assignedToId) {
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ON_HOLD", ticketId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Resumes an ON_HOLD ticket back to IN_PROGRESS when parts arrive.
+   * Resumes SLA clock, regenerates completion code if needed, recomputes queue.
+   */
+  static async resumeTicket(ticketId: string, user: AuthenticatedUser) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (ticket.assignedToId !== user.id && user.role !== Role.ADMIN) {
+      throw new AppError(403, "FORBIDDEN", "Only the assigned staff member can resume this ticket");
+    }
+
+    if (ticket.status !== TicketStatus.ON_HOLD) {
+      throw new AppError(
+        400,
+        "INVALID_STATE",
+        `Ticket must be on hold to be resumed (current: ${ticket.status})`
+      );
+    }
+
+    assertTransition(ticket.status, TicketStatus.IN_PROGRESS, user.role);
+
+    const now = clock.now();
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Resume SLA
+      const slaRes = resumeSla(ticket, now);
+
+      const updated = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.IN_PROGRESS,
+          pausedAt: null,
+          totalPausedMinutes: slaRes ? slaRes.totalPausedMinutes : ticket.totalPausedMinutes,
+          dueAt: slaRes ? slaRes.dueAt : ticket.dueAt,
+        },
+      });
+
+      // Ensure completion code is set and valid
+      await this.onEnterInProgress(ticketId, tx);
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: TicketStatus.ON_HOLD,
+          toStatus: TicketStatus.IN_PROGRESS,
+          type: EventType.RESUMED,
+          note: "Parts arrived, work resumed on site",
+          createdAt: now,
+        },
+      });
+
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "TICKET_RESUMED",
+          message: `Work resumed on ${ticket.code}: ${ticket.title}`,
+        },
+        tx
+      );
+
+      return {
+        success: true,
+        status: updated.status,
+        dueAt: updated.dueAt,
+        totalPausedMinutes: updated.totalPausedMinutes,
+      };
+    }, TX_OPTIONS);
+
+    if (ticket.assignedToId) {
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "RESUMED", ticketId);
+    }
+
+    return result;
+  }
+
+  /**
    * Warden or Chief Warden updates priority
    */
   static async updatePriority(

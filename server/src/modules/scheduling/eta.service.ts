@@ -49,6 +49,23 @@ export function formatIstTime(date: Date, relativeTo: Date): string {
   return `${weekdayName} ${timeStr}`;
 }
 
+export function formatStudentFriendlyReason(internalReason: string): string {
+  const lower = internalReason.toLowerCase();
+  if (lower.includes("priority") || lower.includes("urgent")) {
+    return "an urgent issue was added ahead of yours";
+  }
+  if (lower.includes("reassign")) {
+    return "your ticket was moved to another staff member";
+  }
+  if (lower.includes("tick") || lower.includes("time") || lower.includes("started") || lower.includes("longer")) {
+    return "the staff member's previous job is taking longer than expected";
+  }
+  if (lower.includes("assigned") || lower.includes("new ticket")) {
+    return "a higher priority task was added ahead of yours";
+  }
+  return "the staff member's schedule was updated";
+}
+
 export class EtaService {
   /**
    * Recomputes a staff member's queue ETAs:
@@ -206,6 +223,7 @@ export class EtaService {
 
           if (delayMinutes > 30) {
             const timeStr = formatIstTime(newP50, now);
+            const studentReason = formatStudentFriendlyReason(reason);
             const audience = await NotificationService.getTicketAudience(ticket.id, undefined, client);
 
             await NotificationService.notify(
@@ -213,7 +231,7 @@ export class EtaService {
               {
                 ticketId: ticket.id,
                 type: "ETA_DELAYED",
-                message: `Your ${ticket.category.name} fix is delayed to ~${timeStr}: ${reason}`,
+                message: `Your ${ticket.category.name} fix is delayed to ~${timeStr}: ${studentReason}`,
               },
               client
             );

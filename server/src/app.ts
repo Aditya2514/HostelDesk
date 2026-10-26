@@ -36,5 +36,9 @@ app.post("/api/jobs/tick", (req: Request, res: Response) => {
   res.status(200).json({ ran: [] });
 });
 
+// Admin demo routes
+import { demoRouter } from "./modules/admin/demo.routes";
+app.use("/api/admin/demo", demoRouter);
+
 // Central error handler
 app.use(errorHandler);

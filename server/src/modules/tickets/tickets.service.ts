@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Prisma, LocationType, Priority, TicketStatus, Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { clock } from "../../lib/clock";
@@ -41,11 +42,35 @@ export class TicketsService {
   }
 
   /**
-   * Phase 4 hook: executed when ticket enters IN_PROGRESS.
-   * Phase 4 will implement 4-digit completion code generation here.
+   * Generates a 4-digit completion code for ROOM tickets entering IN_PROGRESS,
+   * zero-padded via crypto.randomInt(0, 10000). Resets failed attempts and blocks.
    */
-  static async onEnterInProgress(_ticketId: string, _tx: Prisma.TransactionClient): Promise<void> {
-    // Phase 4: generate completion code
+  static async onEnterInProgress(ticketId: string, tx: Prisma.TransactionClient): Promise<void> {
+    const ticket = await tx.ticket.findUnique({
+      where: { id: ticketId },
+      select: { locationType: true },
+    });
+
+    if (ticket?.locationType === LocationType.ROOM) {
+      const code = String(crypto.randomInt(0, 10000)).padStart(4, "0");
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          completionCode: code,
+          codeFailedAttempts: 0,
+          codeBlockedUntil: null,
+        },
+      });
+    } else {
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          completionCode: null,
+          codeFailedAttempts: 0,
+          codeBlockedUntil: null,
+        },
+      });
+    }
   }
 
   /**
@@ -1018,6 +1043,50 @@ export class TicketsService {
       followerCount: ticket._count.followers,
       commentCount: ticket._count.comments,
       isFollowing,
+    };
+  }
+
+  /**
+   * Fetches completion code. Accessible ONLY by current occupants of that room,
+   * and ONLY while the ticket is IN_PROGRESS. All other requests return 404 NOT_FOUND.
+   */
+  static async getCompletionCode(ticketId: string, user: AuthenticatedUser) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        id: true,
+        status: true,
+        locationType: true,
+        roomId: true,
+        completionCode: true,
+      },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    // Must be currently IN_PROGRESS
+    if (ticket.status !== TicketStatus.IN_PROGRESS) {
+      throw new AppError(404, "NOT_FOUND", "Completion code not available");
+    }
+
+    // Must be a ROOM ticket
+    if (ticket.locationType !== LocationType.ROOM || !ticket.roomId) {
+      throw new AppError(404, "NOT_FOUND", "Completion code not available");
+    }
+
+    // ONLY current room occupants
+    const isCurrentOccupant =
+      user.role === Role.STUDENT && Boolean(user.currentRoomId && user.currentRoomId === ticket.roomId);
+
+    if (!isCurrentOccupant) {
+      throw new AppError(404, "NOT_FOUND", "Completion code not available");
+    }
+
+    return {
+      ticketId: ticket.id,
+      code: ticket.completionCode,
     };
   }
 

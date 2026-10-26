@@ -18,6 +18,7 @@ ticketRouter.get("/", TicketsController.list);
 ticketRouter.get("/:id", TicketsController.getById);
 ticketRouter.get("/:id/events", TicketsController.getEvents);
 ticketRouter.get("/:id/eta-explanation", TicketsController.getEtaExplanation);
+ticketRouter.get("/:id/completion-code", TicketsController.getCompletionCode);
 
 // Evidence photo uploads
 ticketRouter.post("/:id/attachments", photoUploadMiddleware, AttachmentsController.upload);

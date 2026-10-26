@@ -48,6 +48,15 @@ export class TicketsController {
     }
   }
 
+  static async getCompletionCode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.getCompletionCode(req.params.id, req.user!);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getEvents(req: Request, res: Response, next: NextFunction) {
     try {
       const events = await TicketsService.getTicketEvents(req.params.id, req.user!);

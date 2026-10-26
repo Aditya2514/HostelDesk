@@ -551,4 +551,177 @@ describe("Admin Module — Staff Management & Shift Editor Rules", () => {
   });
 });
 
+import { CategoryService } from "../src/modules/admin/category.service";
+
+describe("Admin Module — Category Management & SLA Tuning Rules", () => {
+  it("rejects category creation with duration or SLA outside allowed bounds", async () => {
+    // duration < 5
+    await expect(
+      CategoryService.createCategory("admin-1", {
+        name: "Quick fix",
+        trade: Trade.ELECTRICIAN,
+        defaultDurationMin: 2,
+        slaMinutes: 120,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    // duration > 480
+    await expect(
+      CategoryService.createCategory("admin-1", {
+        name: "Long fix",
+        trade: Trade.ELECTRICIAN,
+        defaultDurationMin: 600,
+        slaMinutes: 120,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    // sla < 30
+    await expect(
+      CategoryService.createCategory("admin-1", {
+        name: "Fast SLA",
+        trade: Trade.ELECTRICIAN,
+        defaultDurationMin: 30,
+        slaMinutes: 15,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    // sla > 20160
+    await expect(
+      CategoryService.createCategory("admin-1", {
+        name: "Slow SLA",
+        trade: Trade.ELECTRICIAN,
+        defaultDurationMin: 30,
+        slaMinutes: 25000,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+  });
+
+  it("rejects duplicate category name with 409 CATEGORY_EXISTS", async () => {
+    vi.spyOn(prisma.category, "findUnique").mockResolvedValue({
+      id: "cat-1",
+      name: "Fan fault",
+    } as any);
+
+    await expect(
+      CategoryService.createCategory("admin-1", {
+        name: "Fan fault",
+        trade: Trade.ELECTRICIAN,
+        defaultDurationMin: 30,
+        slaMinutes: 120,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: "CATEGORY_EXISTS",
+    });
+  });
+
+  it("creates category and logs CREATE_CATEGORY audit action inside transaction", async () => {
+    vi.spyOn(prisma.category, "findUnique").mockResolvedValue(null);
+
+    const createdCat = {
+      id: "cat-new",
+      name: "New Category",
+      trade: Trade.PLUMBER,
+      defaultDurationMin: 45,
+      slaMinutes: 240,
+      defaultPriority: "NORMAL",
+      isActive: true,
+    };
+
+    const mockTx: any = {
+      category: {
+        create: vi.fn().mockResolvedValue(createdCat),
+      },
+      adminAuditLog: {
+        create: vi.fn().mockResolvedValue({ id: "audit-cat-create" }),
+      },
+    };
+
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (cb: any) => cb(mockTx));
+
+    const result = await CategoryService.createCategory("admin-1", {
+      name: "New Category",
+      trade: Trade.PLUMBER,
+      defaultDurationMin: 45,
+      slaMinutes: 240,
+    });
+
+    expect(result.id).toBe("cat-new");
+    expect(mockTx.category.create).toHaveBeenCalled();
+    expect(mockTx.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATE_CATEGORY",
+          actorId: "admin-1",
+        }),
+      })
+    );
+  });
+
+  it("updates category and logs UPDATE_CATEGORY audit action inside transaction", async () => {
+    vi.spyOn(prisma.category, "findUnique").mockImplementation(async (args: any) => {
+      if (args.where?.id === "cat-1") {
+        return {
+          id: "cat-1",
+          name: "Existing Cat",
+          trade: Trade.CARPENTER,
+          defaultDurationMin: 60,
+          slaMinutes: 300,
+          defaultPriority: "NORMAL",
+          isActive: true,
+        } as any;
+      }
+      return null;
+    });
+
+    const mockTx: any = {
+      category: {
+        update: vi.fn().mockResolvedValue({
+          id: "cat-1",
+          name: "Updated Cat",
+          trade: Trade.CARPENTER,
+          defaultDurationMin: 90,
+          slaMinutes: 300,
+          defaultPriority: "NORMAL",
+          isActive: true,
+        }),
+      },
+      adminAuditLog: {
+        create: vi.fn().mockResolvedValue({ id: "audit-cat-update" }),
+      },
+    };
+
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (cb: any) => cb(mockTx));
+
+    const result = await CategoryService.updateCategory("admin-1", "cat-1", {
+      name: "Updated Cat",
+      defaultDurationMin: 90,
+    });
+
+    expect(result.defaultDurationMin).toBe(90);
+    expect(mockTx.category.update).toHaveBeenCalled();
+    expect(mockTx.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "UPDATE_CATEGORY",
+          actorId: "admin-1",
+        }),
+      })
+    );
+  });
+});
+
+
 

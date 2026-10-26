@@ -7,6 +7,7 @@ import { AnalyticsView } from "../components/AnalyticsView";
 import { AdminAuditLogView } from "../components/AdminAuditLogView";
 import { CsvImportView } from "../components/CsvImportView";
 import { StaffManagementView } from "../components/StaffManagementView";
+import { CategoryManagementView } from "../components/CategoryManagementView";
 import {
   Settings,
   Clock,
@@ -19,9 +20,10 @@ import {
   History,
   Upload,
   Users,
+  Tag,
 } from "lucide-react";
 
-type AdminTab = "rooms" | "import" | "staff" | "analytics" | "audit" | "timetravel";
+type AdminTab = "rooms" | "import" | "staff" | "categories" | "analytics" | "audit" | "timetravel";
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -146,6 +148,18 @@ export const AdminDashboard: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab("categories")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === "categories"
+                ? "bg-rose-500 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <Tag className="w-4 h-4" />
+            <span>Categories &amp; SLAs</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("analytics")}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
               activeTab === "analytics"
@@ -190,6 +204,8 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === "import" && <CsvImportView />}
 
         {activeTab === "staff" && <StaffManagementView />}
+
+        {activeTab === "categories" && <CategoryManagementView />}
 
         {activeTab === "analytics" && <AnalyticsView />}
 

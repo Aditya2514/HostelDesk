@@ -221,6 +221,65 @@ router.put("/staff/:id/shifts", async (req: Request, res: Response, next: NextFu
   }
 });
 
+import { CategoryService } from "./category.service";
+
+/**
+ * GET /api/admin/categories
+ * All categories including inactive
+ */
+router.get("/categories", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const categories = await CategoryService.getCategories();
+    res.json({ categories });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/admin/categories
+ * Create new category
+ */
+router.post("/categories", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, trade, defaultDurationMin, slaMinutes, defaultPriority, isActive } = req.body;
+    const category = await CategoryService.createCategory(req.user!.id, {
+      name,
+      trade,
+      defaultDurationMin: Number(defaultDurationMin),
+      slaMinutes: Number(slaMinutes),
+      defaultPriority,
+      isActive,
+    });
+    res.status(201).json({ category });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/admin/categories/:id
+ * Update category fields
+ */
+router.patch("/categories/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const categoryId = req.params.id;
+    const { name, trade, defaultDurationMin, slaMinutes, defaultPriority, isActive } = req.body;
+    const updated = await CategoryService.updateCategory(req.user!.id, categoryId, {
+      name,
+      trade,
+      defaultDurationMin: defaultDurationMin !== undefined ? Number(defaultDurationMin) : undefined,
+      slaMinutes: slaMinutes !== undefined ? Number(slaMinutes) : undefined,
+      defaultPriority,
+      isActive,
+    });
+    res.json({ category: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export { router as adminRoutes };
+
 
 

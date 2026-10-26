@@ -36,6 +36,7 @@ ticketRouter.post("/:id/resolve", requireRole(Role.STAFF), TicketsController.res
 ticketRouter.post("/:id/room-locked", requireRole(Role.STAFF), TicketsController.roomLocked);
 ticketRouter.post("/:id/hold", requireRole(Role.STAFF), TicketsController.hold);
 ticketRouter.post("/:id/resume", requireRole(Role.STAFF), TicketsController.resume);
+ticketRouter.post("/:id/disputes/code-refused", requireRole(Role.STAFF), TicketsController.codeRefused);
 
 // Locked room occupant access & disputes
 ticketRouter.get("/:id/access-slots", requireRole(Role.STUDENT), TicketsController.getAccessSlots);

@@ -58,6 +58,10 @@ app.use("/api/tickets", ticketRouter);
 import { notificationRouter } from "./modules/notifications/notification.routes";
 app.use("/api/notifications", notificationRouter);
 
+// Dispute routes
+import { disputeRouter } from "./modules/disputes/disputes.routes";
+app.use("/api/disputes", disputeRouter);
+
 // Category routes
 import { categoryRouter } from "./modules/categories/categories.routes";
 app.use("/api/categories", categoryRouter);

@@ -1651,6 +1651,92 @@ export class TicketsService {
   }
 
   /**
+   * Assigned staff disputes occupant's code refusal when work is completed.
+   * Creates an OPEN Dispute of type CODE_REFUSED for warden review.
+   */
+  static async reportCodeRefused(ticketId: string, user: AuthenticatedUser, reason: string) {
+    if (!reason || !reason.trim()) {
+      throw new AppError(400, "REASON_REQUIRED", "Dispute reason is required");
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (ticket.assignedToId !== user.id && user.role !== Role.ADMIN) {
+      throw new AppError(403, "FORBIDDEN", "Only the assigned staff member can raise a code refusal dispute");
+    }
+
+    if (ticket.status !== TicketStatus.IN_PROGRESS) {
+      throw new AppError(
+        400,
+        "INVALID_STATE",
+        `Ticket must be in progress to report code refusal (current: ${ticket.status})`
+      );
+    }
+
+    const now = clock.now();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const dispute = await tx.dispute.create({
+        data: {
+          ticketId,
+          raisedById: user.id,
+          type: DisputeType.CODE_REFUSED,
+          reason: reason.trim(),
+          status: DisputeStatus.OPEN,
+          createdAt: now,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          type: EventType.DISPUTE_RAISED,
+          note: `Staff reported occupant refused completion code: ${reason.trim()}`,
+          createdAt: now,
+        },
+      });
+
+      // Notify block warden for review
+      const wardens = await tx.user.findMany({
+        where: {
+          role: Role.WARDEN,
+          blockId: ticket.blockId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (wardens.length > 0) {
+        await NotificationService.notify(
+          wardens.map((w) => w.id),
+          {
+            ticketId,
+            type: "DISPUTE_RAISED",
+            message: `Staff reported code refusal for ${ticket.code}: "${reason.trim()}"`,
+          },
+          tx
+        );
+      }
+
+      return {
+        success: true,
+        disputeId: dispute.id,
+        status: dispute.status,
+      };
+    }, TX_OPTIONS);
+
+    return result;
+  }
+
+  /**
    * Warden or Chief Warden updates priority
    */
   static async updatePriority(

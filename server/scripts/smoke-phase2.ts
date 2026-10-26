@@ -227,11 +227,13 @@ async function runSmokePhase2() {
     // STEP 6: Warden changes priority & reassigns; Student gets 403
     // -------------------------------------------------------------
     process.stdout.write("6. Warden reprioritise/reassign & student 403 -> ");
+    const targetPriority = roomTicket.priority === "URGENT" ? "NORMAL" : "URGENT";
+
     // Student tries to change priority -> 403
     const studentPriorityRes = await request(app)
       .patch(`/api/tickets/${roomTicket.id}/priority`)
       .set("Cookie", student1.cookie)
-      .send({ priority: "URGENT", reason: "Student attempt" });
+      .send({ priority: targetPriority, reason: "Student attempt" });
 
     if (studentPriorityRes.status !== 403) {
       console.log(`FAIL (Student changing priority should return 403, got: ${studentPriorityRes.status})`);
@@ -242,10 +244,21 @@ async function runSmokePhase2() {
     const wardenPriorityRes = await request(app)
       .patch(`/api/tickets/${roomTicket.id}/priority`)
       .set("Cookie", wardenA.cookie)
-      .send({ priority: "URGENT", reason: "Water damage risk to floor" });
+      .send({ priority: targetPriority, reason: "Water damage risk to floor" });
 
     if (wardenPriorityRes.status !== 200) {
       console.log(`FAIL (Warden priority change failed: ${wardenPriorityRes.status})`);
+      process.exit(1);
+    }
+
+    // Warden tries to change to identical priority -> 400 PRIORITY_UNCHANGED
+    const unchangedPriorityRes = await request(app)
+      .patch(`/api/tickets/${roomTicket.id}/priority`)
+      .set("Cookie", wardenA.cookie)
+      .send({ priority: targetPriority, reason: "Same priority" });
+
+    if (unchangedPriorityRes.status !== 400 || unchangedPriorityRes.body.error?.code !== "PRIORITY_UNCHANGED") {
+      console.log(`FAIL (Expected 400 PRIORITY_UNCHANGED, got: ${unchangedPriorityRes.status})`);
       process.exit(1);
     }
 
@@ -257,7 +270,7 @@ async function runSmokePhase2() {
       .send({ staffId: targetPlumberId });
 
     if (reassignRes.status === 200) {
-      console.log(`PASS (Priority changed to URGENT, ticket reassigned, student got 403)`);
+      console.log(`PASS (Priority changed to ${targetPriority}, identical rejected, reassigned, student got 403)`);
     } else {
       console.log(`FAIL (Warden reassign failed: ${reassignRes.status})`);
       process.exit(1);

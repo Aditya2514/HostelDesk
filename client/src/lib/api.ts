@@ -91,4 +91,31 @@ export const api = {
     apiRequest<T>(endpoint, { ...options, method: "PATCH", data }),
   delete: <T>(endpoint: string, options?: RequestOptions) =>
     apiRequest<T>(endpoint, { ...options, method: "DELETE" }),
+  upload: async <T>(endpoint: string, formData: FormData): Promise<T> => {
+    const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL}${endpoint}`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+    } catch (err: any) {
+      throw new ApiError(err?.message || "Network error. Please check connection.", "NETWORK_ERROR", 0);
+    }
+    let jsonResult: any;
+    try {
+      jsonResult = await response.json();
+    } catch {
+      if (!response.ok) throw new ApiError(`Upload failed with status ${response.status}`, "HTTP_ERROR", response.status);
+      return {} as T;
+    }
+    if (!response.ok) {
+      const errorData = jsonResult?.error;
+      const message = errorData?.message || jsonResult?.message || "Upload failed";
+      const code = errorData?.code || "UPLOAD_ERROR";
+      throw new ApiError(message, code, response.status);
+    }
+    return jsonResult as T;
+  },
 };

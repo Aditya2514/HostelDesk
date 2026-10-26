@@ -2421,6 +2421,21 @@ export class TicketsService {
           },
           orderBy: { createdAt: "asc" },
         },
+        disputes: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            reason: true,
+            decision: true,
+            decisionNote: true,
+            createdAt: true,
+            decidedAt: true,
+            raisedBy: { select: { id: true, name: true, role: true } },
+            decidedBy: { select: { id: true, name: true, role: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
         _count: { select: { followers: true, comments: true } },
       },
     });

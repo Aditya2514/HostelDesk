@@ -33,6 +33,12 @@ ticketRouter.post("/:id/dispute", requireRole(Role.STUDENT), TicketsController.d
 // Staff actions
 ticketRouter.post("/:id/start", requireRole(Role.STAFF), TicketsController.start);
 ticketRouter.post("/:id/resolve", requireRole(Role.STAFF), TicketsController.resolve);
+ticketRouter.post("/:id/room-locked", requireRole(Role.STAFF), TicketsController.roomLocked);
+
+// Locked room occupant access & disputes
+ticketRouter.get("/:id/access-slots", requireRole(Role.STUDENT), TicketsController.getAccessSlots);
+ticketRouter.post("/:id/access", requireRole(Role.STUDENT), TicketsController.respondAccess);
+ticketRouter.post("/:id/disputes/locked-claim", requireRole(Role.STUDENT), TicketsController.disputeLockedClaim);
 
 // Warden / Chief Warden actions
 ticketRouter.patch(

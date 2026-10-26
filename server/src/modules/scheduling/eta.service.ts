@@ -213,6 +213,7 @@ export class EtaService {
         notBefore: t.preferredSlotStart,
         p50Minutes: est.p50Minutes,
         p80Minutes: est.p80Minutes,
+        priorityBoostUntil: t.priorityBoostUntil,
       });
     }
 

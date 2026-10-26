@@ -14,7 +14,7 @@ export interface ShiftWindow {
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30 in milliseconds
 const MAX_LOOKAHEAD_DAYS = 14;
 
-interface IstParts {
+export interface IstParts {
   year: number;
   month: number;
   date: number;
@@ -27,7 +27,7 @@ interface IstParts {
 /**
  * Converts a standard Date (UTC instant) into its IST calendar components.
  */
-function toIstParts(date: Date): IstParts {
+export function toIstParts(date: Date): IstParts {
   const istDate = new Date(date.getTime() + IST_OFFSET_MS);
   return {
     year: istDate.getUTCFullYear(),
@@ -43,7 +43,7 @@ function toIstParts(date: Date): IstParts {
 /**
  * Constructs a Date from IST calendar components.
  */
-function fromIstParts(
+export function fromIstParts(
   year: number,
   month: number,
   date: number,

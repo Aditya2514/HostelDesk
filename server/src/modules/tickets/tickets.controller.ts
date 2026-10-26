@@ -120,6 +120,42 @@ export class TicketsController {
     }
   }
 
+  static async roomLocked(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.reportRoomLocked(req.params.id, req.user!);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getAccessSlots(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.getAccessSlots(req.params.id, req.user!);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async respondAccess(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.respondAccess(req.params.id, req.user!, req.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async disputeLockedClaim(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TicketsService.disputeLockedClaim(req.params.id, req.user!, req.body?.reason);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updatePriority(req: Request, res: Response, next: NextFunction) {
     try {
       const parsed = updatePrioritySchema.safeParse(req.body);

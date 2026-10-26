@@ -20,11 +20,12 @@ import { RoutingService } from "../scheduling/routing.service";
 import { EtaService, EtaReason } from "../scheduling/eta.service";
 import { getDurationEstimate, EstimateResult } from "../scheduling/estimator";
 import { simulateQueueRanges, JobDurationsInput, JobPriority } from "../scheduling/simulator";
-import { ShiftWindow } from "../scheduling/shifts";
+import { ShiftWindow, toIstParts, fromIstParts } from "../scheduling/shifts";
 import { NotificationService } from "../notifications/notification.service";
 import { TicketAccessService } from "./ticketAccess.service";
 import { assertTransition } from "./stateMachine";
 import { calculateActualWorkMinutes } from "./workMinutes";
+import { pauseSla, resumeSla } from "./sla";
 
 export const OPEN_STATUSES: TicketStatus[] = [
   TicketStatus.RAISED,
@@ -1066,6 +1067,414 @@ export class TicketsService {
     if (newAssignedStaffId && newAssignedStaffId !== oldAssignedStaffId) {
       await this.safeRecomputeStaffQueue(newAssignedStaffId, "TICKET_DISPUTED", ticketId);
     }
+
+    return result;
+  }
+
+  /**
+   * Assigned staff reports that room was locked.
+   * Requires DOOR photo uploaded by staff within the last 30 minutes.
+   * Increments lockedVisitCount, transitions to AWAITING_ACCESS, pauses SLA, notifies occupants.
+   */
+  static async reportRoomLocked(ticketId: string, user: AuthenticatedUser) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    if (ticket.assignedToId !== user.id && user.role !== Role.ADMIN) {
+      throw new AppError(403, "FORBIDDEN", "Only the assigned staff member can report room locked");
+    }
+
+    if (ticket.locationType !== LocationType.ROOM) {
+      throw new AppError(400, "ROOM_ONLY", "Room locked report is only applicable to room tickets");
+    }
+
+    if (ticket.status !== TicketStatus.ASSIGNED && ticket.status !== TicketStatus.IN_PROGRESS) {
+      throw new AppError(400, "INVALID_STATE", `Cannot report room locked for ticket in ${ticket.status}`);
+    }
+
+    assertTransition(ticket.status, TicketStatus.AWAITING_ACCESS, user.role);
+
+    const now = clock.now();
+    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
+
+    // Verify door photo uploaded by this staff member within the last 30 minutes
+    const doorPhoto = await prisma.attachment.findFirst({
+      where: {
+        ticketId,
+        kind: AttachmentKind.DOOR,
+        uploaderId: user.id,
+        createdAt: { gte: thirtyMinAgo },
+      },
+    });
+
+    if (!doorPhoto) {
+      throw new AppError(
+        400,
+        "DOOR_PHOTO_REQUIRED",
+        "A door photo uploaded within the last 30 minutes is required to mark room locked"
+      );
+    }
+
+    const newLockedCount = (ticket.lockedVisitCount || 0) + 1;
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Pause SLA
+      pauseSla(ticket, now);
+
+      // 2. Update ticket
+      const updated = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.AWAITING_ACCESS,
+          lockedVisitCount: newLockedCount,
+          pausedAt: now,
+          etaP50At: null,
+          etaP80At: null,
+          etaNotifiedP50At: null,
+        },
+      });
+
+      // 3. Log event
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: ticket.status,
+          toStatus: TicketStatus.AWAITING_ACCESS,
+          type: EventType.ROOM_LOCKED,
+          note: `Staff reported room was locked (visit #${newLockedCount}) with door photo`,
+          createdAt: now,
+        },
+      });
+
+      // 4. Notify room occupants
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "ROOM_LOCKED",
+          message: `${user.name} came at ${timeStr}; your room was locked.`,
+        },
+        tx
+      );
+
+      return {
+        success: true,
+        status: updated.status,
+        lockedVisitCount: updated.lockedVisitCount,
+      };
+    }, TX_OPTIONS);
+
+    if (ticket.assignedToId) {
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ROOM_LOCKED", ticketId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Generates available 30-minute access slots for the assigned staff member
+   * over the next 3 days, omitting already booked slots and off-shift times.
+   */
+  static async getAccessSlots(ticketId: string, user: AuthenticatedUser) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    await this.verifyStudentOccupantOrFollower(ticket, user);
+
+    if (!ticket.assignedToId) {
+      return { slots: [] };
+    }
+
+    const staff = await prisma.user.findUnique({
+      where: { id: ticket.assignedToId },
+      include: { shifts: true },
+    });
+
+    if (!staff || !staff.shifts || staff.shifts.length === 0) {
+      return { slots: [] };
+    }
+
+    const now = clock.now();
+
+    // Fetch existing booked slots for this staff member
+    const bookedTickets = await prisma.ticket.findMany({
+      where: {
+        assignedToId: ticket.assignedToId,
+        id: { not: ticketId },
+        status: { in: OPEN_STATUSES },
+        preferredSlotStart: { not: null },
+      },
+      select: {
+        preferredSlotStart: true,
+        preferredSlotEnd: true,
+      },
+    });
+
+    const slots: Array<{ start: string; end: string; label: string }> = [];
+
+    for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
+      const targetInstant = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+      const targetParts = toIstParts(targetInstant);
+
+      const dayShifts = staff.shifts.filter((s) => s.weekday === targetParts.weekday);
+
+      for (const shift of dayShifts) {
+        for (let minute = shift.startMinute; minute + 30 <= shift.endMinute; minute += 30) {
+          const slotStart = fromIstParts(targetParts.year, targetParts.month, targetParts.date, minute);
+          const slotEnd = fromIstParts(targetParts.year, targetParts.month, targetParts.date, minute + 30);
+
+          if (slotStart.getTime() <= now.getTime()) {
+            continue; // in the past
+          }
+
+          const collides = bookedTickets.some((b) => {
+            if (!b.preferredSlotStart || !b.preferredSlotEnd) return false;
+            return (
+              slotStart.getTime() < b.preferredSlotEnd.getTime() &&
+              slotEnd.getTime() > b.preferredSlotStart.getTime()
+            );
+          });
+
+          if (!collides) {
+            const startLabel = slotStart.toLocaleString("en-US", {
+              timeZone: "Asia/Kolkata",
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+            const endLabel = slotEnd.toLocaleString("en-US", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+
+            slots.push({
+              start: slotStart.toISOString(),
+              end: slotEnd.toISOString(),
+              label: `${startLabel} - ${endLabel}`,
+            });
+          }
+        }
+      }
+    }
+
+    return { slots };
+  }
+
+  /**
+   * Occupant responds to locked room visit:
+   * Option 1: "COMING_15" -> sets priorityBoostUntil for 15 minutes (rejected if lockedVisitCount >= 2).
+   * Option 2: "SLOT" -> sets preferredSlotStart/End for scheduled arrival.
+   * Both options: resumes SLA clock, transitions back to ASSIGNED, notifies staff, recomputes queue.
+   */
+  static async respondAccess(
+    ticketId: string,
+    user: AuthenticatedUser,
+    payload: { option: "COMING_15" | "SLOT"; slotStart?: string }
+  ) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    await this.verifyStudentOccupantOrFollower(ticket, user);
+
+    if (ticket.status !== TicketStatus.AWAITING_ACCESS) {
+      throw new AppError(400, "INVALID_STATE", `Cannot respond to access for ticket in ${ticket.status}`);
+    }
+
+    assertTransition(ticket.status, TicketStatus.ASSIGNED, user.role);
+
+    const now = clock.now();
+    let priorityBoostUntil: Date | null = null;
+    let preferredSlotStart: Date | null = null;
+    let preferredSlotEnd: Date | null = null;
+    let note = "";
+
+    if (payload.option === "COMING_15") {
+      if ((ticket.lockedVisitCount || 0) >= 2) {
+        throw new AppError(
+          400,
+          "SLOT_REQUIRED",
+          "On the 2nd locked visit, you must pick a time slot (15-minute option is not available)"
+        );
+      }
+      priorityBoostUntil = new Date(now.getTime() + 15 * 60 * 1000);
+      note = "Occupant indicated: I will be there in 15 minutes";
+    } else if (payload.option === "SLOT") {
+      if (!payload.slotStart) {
+        throw new AppError(400, "SLOT_REQUIRED", "A valid slotStart date/time is required");
+      }
+      const start = new Date(payload.slotStart);
+      if (isNaN(start.getTime()) || start.getTime() <= now.getTime()) {
+        throw new AppError(400, "INVALID_SLOT", "Slot start time must be a valid future instant");
+      }
+      preferredSlotStart = start;
+      preferredSlotEnd = new Date(start.getTime() + 30 * 60 * 1000);
+      note = `Occupant selected access slot starting at ${start.toISOString()}`;
+    } else {
+      throw new AppError(400, "INVALID_OPTION", "Invalid access option. Choose COMING_15 or SLOT.");
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Resume SLA
+      const slaRes = resumeSla(ticket, now);
+
+      const updated = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.ASSIGNED,
+          priorityBoostUntil,
+          preferredSlotStart,
+          preferredSlotEnd,
+          pausedAt: null,
+          totalPausedMinutes: slaRes ? slaRes.totalPausedMinutes : ticket.totalPausedMinutes,
+          dueAt: slaRes ? slaRes.dueAt : ticket.dueAt,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: TicketStatus.AWAITING_ACCESS,
+          toStatus: TicketStatus.ASSIGNED,
+          type: EventType.ACCESS_RESPONDED,
+          note,
+          createdAt: now,
+        },
+      });
+
+      if (ticket.assignedToId) {
+        await NotificationService.notify(
+          [ticket.assignedToId],
+          {
+            ticketId,
+            type: "ACCESS_RESPONDED",
+            message: `Occupant responded on ${ticket.code}: ${
+              payload.option === "COMING_15" ? "Will be there in 15 minutes" : "Picked a time slot"
+            }`,
+          },
+          tx
+        );
+      }
+
+      return {
+        success: true,
+        status: updated.status,
+        priorityBoostUntil: updated.priorityBoostUntil,
+        preferredSlotStart: updated.preferredSlotStart,
+        dueAt: updated.dueAt,
+        totalPausedMinutes: updated.totalPausedMinutes,
+      };
+    }, TX_OPTIONS);
+
+    if (ticket.assignedToId) {
+      await this.safeRecomputeStaffQueue(ticket.assignedToId, "ACCESS_RESPONDED", ticketId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Occupant disputes a locked room claim ("I was in my room").
+   * Creates an OPEN Dispute for warden review of door photo and timestamp.
+   */
+  static async disputeLockedClaim(ticketId: string, user: AuthenticatedUser, reason: string) {
+    if (!reason || !reason.trim()) {
+      throw new AppError(400, "REASON_REQUIRED", "Dispute reason is required");
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    await this.verifyStudentOccupantOrFollower(ticket, user);
+
+    if ((ticket.lockedVisitCount || 0) < 1 && ticket.status !== TicketStatus.AWAITING_ACCESS) {
+      throw new AppError(400, "NO_LOCKED_VISIT", "Ticket has no locked visits to dispute");
+    }
+
+    const now = clock.now();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const dispute = await tx.dispute.create({
+        data: {
+          ticketId,
+          raisedById: user.id,
+          type: DisputeType.LOCKED_CLAIM_FALSE,
+          reason: reason.trim(),
+          status: DisputeStatus.OPEN,
+          createdAt: now,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          type: EventType.DISPUTE_RAISED,
+          note: `Occupant disputed locked claim: ${reason.trim()}`,
+          createdAt: now,
+        },
+      });
+
+      // Notify block warden for review
+      const wardens = await tx.user.findMany({
+        where: {
+          role: Role.WARDEN,
+          blockId: ticket.blockId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (wardens.length > 0) {
+        await NotificationService.notify(
+          wardens.map((w) => w.id),
+          {
+            ticketId,
+            type: "DISPUTE_RAISED",
+            message: `Occupant disputed locked claim for ${ticket.code}: "${reason.trim()}"`,
+          },
+          tx
+        );
+      }
+
+      return {
+        success: true,
+        disputeId: dispute.id,
+        status: dispute.status,
+      };
+    }, TX_OPTIONS);
 
     return result;
   }

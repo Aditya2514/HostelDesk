@@ -138,6 +138,7 @@ export class RoutingService {
           status: true,
           startedAt: true,
           preferredSlotStart: true,
+          priorityBoostUntil: true,
         },
         orderBy: { createdAt: "asc" },
       });
@@ -156,6 +157,7 @@ export class RoutingService {
           notBefore: t.preferredSlotStart,
           p50Minutes: est.p50Minutes,
           p80Minutes: est.p80Minutes,
+          priorityBoostUntil: t.priorityBoostUntil,
         });
       }
 

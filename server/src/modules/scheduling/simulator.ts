@@ -10,6 +10,7 @@ export interface SimulatorJob {
   status: string; // e.g. "IN_PROGRESS", "ASSIGNED", "ON_HOLD", "AWAITING_ACCESS"
   startedAt?: Date | null;
   notBefore?: Date | null;
+  priorityBoostUntil?: Date | null;
 }
 
 export interface ScheduledJobResult {
@@ -32,6 +33,7 @@ export interface JobDurationsInput {
   notBefore?: Date | null;
   p50Minutes: number;
   p80Minutes: number;
+  priorityBoostUntil?: Date | null;
 }
 
 export interface QueueRangeResult {
@@ -126,8 +128,12 @@ export function simulateQueue({
     );
 
     if (readyJobs.length > 0) {
-      // Pick highest priority, then oldest createdAt
+      // Pick boosted jobs (priorityBoostUntil > now) first, then highest priority, then oldest createdAt
       readyJobs.sort((a, b) => {
+        const aBoosted = a.priorityBoostUntil && a.priorityBoostUntil.getTime() > now.getTime() ? 1 : 0;
+        const bBoosted = b.priorityBoostUntil && b.priorityBoostUntil.getTime() > now.getTime() ? 1 : 0;
+        if (aBoosted !== bBoosted) return bBoosted - aBoosted;
+
         const prioDiff = PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
         if (prioDiff !== 0) return prioDiff;
         return a.createdAt.getTime() - b.createdAt.getTime();
@@ -192,6 +198,7 @@ export function simulateQueueRanges({
     status: j.status,
     startedAt: j.startedAt,
     notBefore: j.notBefore,
+    priorityBoostUntil: j.priorityBoostUntil,
   }));
   const p50Schedule = simulateQueue({ now, shifts, jobs: p50Jobs });
 
@@ -204,6 +211,7 @@ export function simulateQueueRanges({
     status: j.status,
     startedAt: j.startedAt,
     notBefore: j.notBefore,
+    priorityBoostUntil: j.priorityBoostUntil,
   }));
   const p80Schedule = simulateQueue({ now, shifts, jobs: p80Jobs });
 

@@ -26,6 +26,10 @@ ticketRouter.post("/:id/attachments", photoUploadMiddleware, AttachmentsControll
 // Follow common area ticket
 ticketRouter.post("/:id/follow", requireRole(Role.STUDENT), TicketsController.follow);
 
+// Student verification & dispute
+ticketRouter.post("/:id/confirm", requireRole(Role.STUDENT), TicketsController.confirm);
+ticketRouter.post("/:id/dispute", requireRole(Role.STUDENT), TicketsController.dispute);
+
 // Staff actions
 ticketRouter.post("/:id/start", requireRole(Role.STAFF), TicketsController.start);
 ticketRouter.post("/:id/resolve", requireRole(Role.STAFF), TicketsController.resolve);

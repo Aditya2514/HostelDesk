@@ -1,5 +1,17 @@
 import crypto from "crypto";
-import { Prisma, LocationType, Priority, TicketStatus, Role, ResolutionMethod, AttachmentKind, EventType } from "@prisma/client";
+import {
+  Prisma,
+  LocationType,
+  Priority,
+  TicketStatus,
+  Role,
+  ResolutionMethod,
+  AttachmentKind,
+  EventType,
+  CloseReason,
+  DisputeType,
+  DisputeStatus,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { clock } from "../../lib/clock";
 import { AppError } from "../../lib/errors";
@@ -704,6 +716,355 @@ export class TicketsService {
     // Recompute staff queue post-commit
     if (ticket.assignedToId) {
       await this.safeRecomputeStaffQueue(ticket.assignedToId, "TICKET_RESOLVED", ticketId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Helper verifying that a student is either a current occupant of the room
+   * (for ROOM tickets) or raiser/follower (for COMMON tickets).
+   */
+  private static async verifyStudentOccupantOrFollower(
+    ticket: {
+      id: string;
+      locationType: LocationType;
+      roomId?: string | null;
+      raisedById: string;
+    },
+    user: AuthenticatedUser,
+    tx: Prisma.TransactionClient = prisma
+  ): Promise<void> {
+    if (user.role === Role.ADMIN) return;
+
+    if (ticket.locationType === LocationType.ROOM && ticket.roomId) {
+      if (user.currentRoomId && user.currentRoomId === ticket.roomId) {
+        return;
+      }
+      const occ = await tx.roomOccupancy.findFirst({
+        where: {
+          roomId: ticket.roomId,
+          userId: user.id,
+          OR: [{ toDate: null }, { toDate: { gte: clock.now() } }],
+        },
+      });
+      if (occ || ticket.raisedById === user.id) {
+        return;
+      }
+    } else {
+      // COMMON: raiser or follower
+      if (ticket.raisedById === user.id) {
+        return;
+      }
+      const follower = await tx.ticketFollower.findUnique({
+        where: { ticketId_userId: { ticketId: ticket.id, userId: user.id } },
+      });
+      if (follower) {
+        return;
+      }
+    }
+
+    throw new AppError(403, "FORBIDDEN", "Only room occupants or ticket reporters can perform this action");
+  }
+
+  /**
+   * Confirms resolution of a ticket by student (occupant or reporter).
+   * Transitions ticket to CLOSED with closeReason CONFIRMED.
+   */
+  static async confirmTicket(ticketId: string, user: AuthenticatedUser) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    await this.verifyStudentOccupantOrFollower(ticket, user);
+
+    if (ticket.status === TicketStatus.CLOSED && ticket.closeReason === CloseReason.CONFIRMED) {
+      return { success: true, status: TicketStatus.CLOSED, closeReason: CloseReason.CONFIRMED };
+    }
+
+    assertTransition(ticket.status, TicketStatus.CLOSED, user.role);
+
+    const now = clock.now();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<Array<{
+        id: string;
+        status: TicketStatus;
+        closeReason: CloseReason | null;
+      }>>`SELECT id, status, "closeReason" FROM tickets WHERE id = ${ticketId} FOR UPDATE`;
+
+      if (!locked) {
+        throw new AppError(404, "NOT_FOUND", "Ticket not found");
+      }
+
+      if (locked.status === TicketStatus.CLOSED && locked.closeReason === CloseReason.CONFIRMED) {
+        return { success: true, status: TicketStatus.CLOSED, closeReason: CloseReason.CONFIRMED };
+      }
+
+      if (
+        locked.status !== TicketStatus.RESOLVED &&
+        locked.status !== TicketStatus.AWAITING_VERIFICATION
+      ) {
+        throw new AppError(409, "INVALID_STATE", `Cannot confirm ticket with status ${locked.status}`);
+      }
+
+      const updated = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.CLOSED,
+          closeReason: CloseReason.CONFIRMED,
+          closedAt: now,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: locked.status,
+          toStatus: TicketStatus.CLOSED,
+          type: EventType.CONFIRMED,
+          note: "Resolution confirmed by student",
+          createdAt: now,
+        },
+      });
+
+      // Also close grouped child tickets if this was a parent ticket
+      await tx.ticket.updateMany({
+        where: {
+          parentTicketId: ticketId,
+          status: { in: [TicketStatus.RESOLVED, TicketStatus.AWAITING_VERIFICATION] },
+        },
+        data: {
+          status: TicketStatus.CLOSED,
+          closeReason: CloseReason.CONFIRMED,
+          closedAt: now,
+        },
+      });
+
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "TICKET_CONFIRMED",
+          message: `${ticket.code} was confirmed and closed.`,
+        },
+        tx
+      );
+
+      return { success: true, status: updated.status, closeReason: updated.closeReason };
+    }, TX_OPTIONS);
+
+    return result;
+  }
+
+  /**
+   * Disputes resolution of a ticket within 48 hours of resolvedAt.
+   * Disputing always wins over confirmation within 48h.
+   * Reopens the ticket, increments reopenCount, logs Dispute row, and re-routes.
+   */
+  static async disputeTicket(ticketId: string, user: AuthenticatedUser, reason: string) {
+    if (!reason || !reason.trim()) {
+      throw new AppError(400, "REASON_REQUIRED", "Dispute reason is required");
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { category: true },
+    });
+
+    if (!ticket) {
+      throw new AppError(404, "NOT_FOUND", "Ticket not found");
+    }
+
+    await this.verifyStudentOccupantOrFollower(ticket, user);
+
+    const now = clock.now();
+    const disputeWindowMs = 48 * 60 * 60 * 1000;
+
+    if (!ticket.resolvedAt) {
+      throw new AppError(400, "TICKET_NOT_RESOLVED", "Ticket has not been marked resolved");
+    }
+    if (now.getTime() - ticket.resolvedAt.getTime() > disputeWindowMs) {
+      throw new AppError(409, "DISPUTE_WINDOW_CLOSED", "Dispute window has closed (48 hours after resolution)");
+    }
+
+    let oldAssignedStaffId: string | null = null;
+    let newAssignedStaffId: string | null = null;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<Array<{
+        id: string;
+        status: TicketStatus;
+        closeReason: CloseReason | null;
+        resolvedAt: Date | null;
+        reopenCount: number;
+        assignedToId: string | null;
+        categoryId: string;
+        blockId: string;
+        priority: Priority;
+        createdAt: Date;
+      }>>`SELECT id, status, "closeReason", "resolvedAt", "reopenCount", "assignedToId", "categoryId", "blockId", priority, "createdAt" FROM tickets WHERE id = ${ticketId} FOR UPDATE`;
+
+      if (!locked) {
+        throw new AppError(404, "NOT_FOUND", "Ticket not found");
+      }
+
+      if (!locked.resolvedAt || now.getTime() - locked.resolvedAt.getTime() > disputeWindowMs) {
+        throw new AppError(409, "DISPUTE_WINDOW_CLOSED", "Dispute window has closed (48 hours after resolution)");
+      }
+
+      const allowed =
+        locked.status === TicketStatus.RESOLVED ||
+        locked.status === TicketStatus.AWAITING_VERIFICATION ||
+        (locked.status === TicketStatus.CLOSED &&
+          (locked.closeReason === CloseReason.CONFIRMED || locked.closeReason === CloseReason.AUTO_CLOSED));
+
+      if (!allowed) {
+        if (locked.status === TicketStatus.REOPENED || locked.status === TicketStatus.ASSIGNED) {
+          return { success: true, status: locked.status, reopenCount: locked.reopenCount };
+        }
+        throw new AppError(409, "INVALID_STATE", `Cannot dispute ticket with status ${locked.status}`);
+      }
+
+      oldAssignedStaffId = locked.assignedToId;
+
+      // 1. Create Dispute entry
+      const dispute = await tx.dispute.create({
+        data: {
+          ticketId,
+          raisedById: user.id,
+          type: DisputeType.FIX_NOT_DONE,
+          reason: reason.trim(),
+          status: DisputeStatus.UPHELD,
+          createdAt: now,
+        },
+      });
+
+      // 2. Log DISPUTED event
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          type: EventType.DISPUTED,
+          note: `Fix disputed: ${reason.trim()}`,
+          createdAt: now,
+        },
+      });
+
+      // 3. Increment reopenCount
+      const nextReopenCount = (locked.reopenCount || 0) + 1;
+
+      // 4. Update status to REOPENED
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: TicketStatus.REOPENED,
+          reopenCount: nextReopenCount,
+          resolvedAt: null,
+          closedAt: null,
+          closeReason: null,
+          startedAt: null,
+        },
+      });
+
+      await tx.ticketEvent.create({
+        data: {
+          ticketId,
+          actorId: user.id,
+          fromStatus: locked.status,
+          toStatus: TicketStatus.REOPENED,
+          type: EventType.STATUS_CHANGED,
+          note: `Ticket reopened via dispute (reopen count: ${nextReopenCount})`,
+          createdAt: now,
+        },
+      });
+
+      // 5. Re-route ticket (preferred same staff if available)
+      const route = await RoutingService.chooseAssignee(
+        {
+          id: ticketId,
+          categoryId: locked.categoryId,
+          blockId: locked.blockId,
+          priority: locked.priority,
+          createdAt: locked.createdAt,
+          preferredStaffId: locked.assignedToId,
+        },
+        tx
+      );
+
+      let finalStatus = TicketStatus.REOPENED;
+
+      if (route) {
+        finalStatus = TicketStatus.ASSIGNED;
+        newAssignedStaffId = route.staffId;
+
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: {
+            status: TicketStatus.ASSIGNED,
+            assignedToId: route.staffId,
+            etaP50At: route.etaP50At,
+            etaP80At: route.etaP80At,
+          },
+        });
+
+        await tx.ticketEvent.create({
+          data: {
+            ticketId,
+            actorId: user.id,
+            fromStatus: TicketStatus.REOPENED,
+            toStatus: TicketStatus.ASSIGNED,
+            type: EventType.STATUS_CHANGED,
+            note: `Reassigned to staff ${route.staffId}`,
+            createdAt: now,
+          },
+        });
+      } else {
+        finalStatus = TicketStatus.RAISED;
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: {
+            status: TicketStatus.RAISED,
+            assignedToId: null,
+            etaP50At: null,
+            etaP80At: null,
+          },
+        });
+      }
+
+      const audience = await NotificationService.getTicketAudience(ticketId, user.id, tx);
+      await NotificationService.notify(
+        audience,
+        {
+          ticketId,
+          type: "TICKET_DISPUTED",
+          message: `Ticket disputed by occupant: ${reason.trim()}`,
+        },
+        tx
+      );
+
+      return {
+        success: true,
+        status: finalStatus,
+        reopenCount: nextReopenCount,
+        assignedToId: newAssignedStaffId,
+        disputeId: dispute.id,
+      };
+    }, TX_OPTIONS);
+
+    // Safe queue recomputations post-commit
+    if (oldAssignedStaffId) {
+      await this.safeRecomputeStaffQueue(oldAssignedStaffId, "TICKET_DISPUTED", ticketId);
+    }
+    if (newAssignedStaffId && newAssignedStaffId !== oldAssignedStaffId) {
+      await this.safeRecomputeStaffQueue(newAssignedStaffId, "TICKET_DISPUTED", ticketId);
     }
 
     return result;

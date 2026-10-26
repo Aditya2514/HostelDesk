@@ -13,6 +13,7 @@ export interface TicketForRouting {
   priority?: Priority;
   createdAt?: Date;
   trade?: Trade;
+  preferredStaffId?: string | null;
 }
 
 export interface RoutingResult {
@@ -219,7 +220,10 @@ export class RoutingService {
       return a.staffId.localeCompare(b.staffId);
     });
 
-    const winner = candidates[0];
+    const preferred = ticket.preferredStaffId
+      ? candidates.find((c) => c.staffId === ticket.preferredStaffId)
+      : null;
+    const winner = preferred || candidates[0];
 
     return {
       staffId: winner.staffId,

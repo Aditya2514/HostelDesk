@@ -39,7 +39,7 @@ app.post("/api/jobs/tick", async (req: Request, res: Response, next: NextFunctio
     if (!secretHeader || secretHeader !== env.JOBS_SECRET) {
       throw new AppError(401, "UNAUTHORIZED", "Invalid or missing jobs secret header");
     }
-    const result = await EtaService.recomputeAllStaffQueues("scheduled time tick");
+    const result = await EtaService.recomputeAllStaffQueues("TICK");
     res.status(200).json({ ran: ["recompute_staff_queues"], ...result });
   } catch (error) {
     next(error);

@@ -487,7 +487,7 @@ async function main() {
   // 6. Run recomputeStaffQueue for all staff members to populate live ETAs
   console.log("Recomputing live queues for all staff members...");
   for (const staff of allStaff) {
-    await EtaService.recomputeStaffQueue(staff.id, "initial synthetic queue setup", prisma);
+    await EtaService.recomputeStaffQueue(staff.id, "SEED", prisma);
   }
 
   const finalTotal = await prisma.ticket.count({ where: { isSynthetic: true } });

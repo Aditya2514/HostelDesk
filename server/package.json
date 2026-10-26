@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "postinstall": "prisma generate",
+    "seed:history": "tsx prisma/seed-history.ts",
     "smoke:phase2": "tsx scripts/smoke-phase2.ts"
   },
   "prisma": {

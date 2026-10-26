@@ -989,6 +989,8 @@ export class TicketsService {
           _count: { select: { followers: true, comments: true } },
         },
         orderBy: [
+          { closedAt: { sort: "asc", nulls: "first" } },
+          { priority: "desc" },
           { createdAt: "desc" },
         ],
         take: filters.limit,
@@ -997,12 +999,34 @@ export class TicketsService {
       prisma.ticket.count({ where }),
     ]);
 
-    return {
-      tickets: tickets.map((t) => ({
+    const statusGroup = (s: TicketStatus): number => {
+      if (OPEN_STATUSES.includes(s)) return 0;
+      if (s === TicketStatus.AWAITING_VERIFICATION || s === TicketStatus.RESOLVED) return 1;
+      return 2; // CLOSED, REJECTED
+    };
+
+    const priorityRank = (p: Priority): number => {
+      if (p === Priority.URGENT) return 0;
+      if (p === Priority.NORMAL) return 1;
+      return 2; // LOW
+    };
+
+    const sortedTickets = tickets
+      .map((t) => ({
         ...t,
         followerCount: t._count.followers,
         commentCount: t._count.comments,
-      })),
+      }))
+      .sort((a, b) => {
+        const sDiff = statusGroup(a.status) - statusGroup(b.status);
+        if (sDiff !== 0) return sDiff;
+        const pDiff = priorityRank(a.priority) - priorityRank(b.priority);
+        if (pDiff !== 0) return pDiff;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+    return {
+      tickets: sortedTickets,
       pagination: {
         page: filters.page,
         limit: filters.limit,

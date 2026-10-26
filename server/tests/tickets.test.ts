@@ -320,4 +320,30 @@ describe("TicketsService Core Logic & Concurrency", () => {
       }
     });
   });
+
+  describe("listTickets Sorting Order", () => {
+    it("sorts open tickets first, then priority, then createdAt", async () => {
+      const now = new Date("2026-10-26T12:00:00Z");
+      const older = new Date("2026-10-26T10:00:00Z");
+
+      // Returned from DB in arbitrary order
+      vi.mocked(prisma.ticket.findMany).mockResolvedValueOnce([
+        { id: "1-closed-urgent", status: TicketStatus.CLOSED, priority: Priority.URGENT, createdAt: now, _count: { followers: 0, comments: 0 } },
+        { id: "2-open-normal", status: TicketStatus.ASSIGNED, priority: Priority.NORMAL, createdAt: now, _count: { followers: 0, comments: 0 } },
+        { id: "3-open-urgent", status: TicketStatus.IN_PROGRESS, priority: Priority.URGENT, createdAt: older, _count: { followers: 0, comments: 0 } },
+        { id: "4-open-low", status: TicketStatus.RAISED, priority: Priority.LOW, createdAt: now, _count: { followers: 0, comments: 0 } },
+      ] as any);
+      vi.mocked(prisma.ticket.count).mockResolvedValueOnce(4);
+
+      const res = await TicketsService.listTickets(mockStudent, { page: 1, limit: 10 });
+      const ids = res.tickets.map((t) => t.id);
+
+      // Expected order:
+      // 1. Open Urgent (3-open-urgent)
+      // 2. Open Normal (2-open-normal)
+      // 3. Open Low (4-open-low)
+      // 4. Closed (1-closed-urgent)
+      expect(ids).toEqual(["3-open-urgent", "2-open-normal", "4-open-low", "1-closed-urgent"]);
+    });
+  });
 });

@@ -74,10 +74,16 @@ enum DisputeStatus {
 }
 
 enum EventType {
+  CREATED
+  STATUS_CHANGED
   STATUS_CHANGE
   ASSIGNED
   REASSIGNED
   PRIORITY_CHANGED
+  COMMENTED
+  COMMENT_ADDED
+  FOLLOWED
+  REJECTED
   ACCESS_REQUESTED
   SLOT_CHOSEN
   ON_HOLD
@@ -92,7 +98,6 @@ enum EventType {
   DISPUTE_DECIDED
   ESCALATED
   AUTO_CLOSED
-  COMMENT_ADDED
 }
 
 model User {
@@ -187,6 +192,7 @@ model StaffShift {
 
 model Ticket {
   id                 String          @id @default(uuid())
+  number             Int             @unique @default(autoincrement())
   code               String          @unique // e.g. "HD-0042"
   locationType       LocationType
   roomId             String?

@@ -74,5 +74,9 @@ app.use("/api/staff", staffRouter);
 import { demoRouter } from "./modules/admin/demo.routes";
 app.use("/api/admin/demo", demoRouter);
 
+// Analytics routes
+import { analyticsRoutes } from "./modules/analytics/analytics.routes";
+app.use("/api/analytics", analyticsRoutes);
+
 // Central error handler
 app.use(errorHandler);

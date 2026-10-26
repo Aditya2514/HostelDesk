@@ -36,6 +36,10 @@ app.post("/api/jobs/tick", (req: Request, res: Response) => {
   res.status(200).json({ ran: [] });
 });
 
+// Auth routes
+import { authRouter } from "./modules/auth/auth.routes";
+app.use("/api/auth", authRouter);
+
 // Admin demo routes
 import { demoRouter } from "./modules/admin/demo.routes";
 app.use("/api/admin/demo", demoRouter);

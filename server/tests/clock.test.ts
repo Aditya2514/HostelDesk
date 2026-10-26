@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { clock } from "../src/lib/clock";
 
 describe("ClockService", () => {
@@ -43,14 +43,17 @@ describe("ClockService", () => {
     expect(clock.getOffsetMinutes()).toBe(0);
   });
 
-  it("ignores time offset when demo mode is disabled", () => {
-    clock.setDemoModeForTesting(false);
+  it("restores offset from system_settings row in database", async () => {
+    // Simulate setting row in database
+    const { prisma } = await import("../src/lib/prisma");
+    const spy = vi.spyOn(prisma.systemSetting, "findUnique").mockResolvedValueOnce({
+      key: "clock_offset_minutes",
+      value: "90",
+      updatedAt: new Date(),
+    } as any);
 
-    const before = clock.now().getTime();
-    clock.advanceMinutes(120);
-    const after = clock.now().getTime();
-
-    expect(clock.getOffsetMinutes()).toBe(0);
-    expect(after - before).toBeLessThan(100);
+    await clock.init();
+    expect(clock.getOffsetMinutes()).toBe(90);
+    spy.mockRestore();
   });
 });

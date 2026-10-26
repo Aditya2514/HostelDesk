@@ -350,3 +350,12 @@ model Notification {
   @@index([userId, readAt])
   @@map("notifications")
 }
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+

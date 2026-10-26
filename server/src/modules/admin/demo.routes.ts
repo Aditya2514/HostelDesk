@@ -22,23 +22,31 @@ const advanceTimeSchema = z.object({
   minutes: z.number().int().positive("Minutes must be a positive integer"),
 });
 
-demoRouter.post("/advance-time", (req: Request, res: Response) => {
-  const parsed = advanceTimeSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message || "Invalid payload");
-  }
+demoRouter.post("/advance-time", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = advanceTimeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError(400, "VALIDATION_ERROR", parsed.error.issues[0]?.message || "Invalid payload");
+    }
 
-  const newTime = clock.advanceMinutes(parsed.data.minutes);
-  res.status(200).json({
-    currentClock: newTime.toISOString(),
-    offsetMinutes: clock.getOffsetMinutes(),
-  });
+    const newTime = await clock.advanceMinutes(parsed.data.minutes);
+    res.status(200).json({
+      currentClock: newTime.toISOString(),
+      offsetMinutes: clock.getOffsetMinutes(),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
-demoRouter.post("/reset-time", (_req: Request, res: Response) => {
-  clock.reset();
-  res.status(200).json({
-    currentClock: clock.now().toISOString(),
-    offsetMinutes: 0,
-  });
+demoRouter.post("/reset-time", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    await clock.reset();
+    res.status(200).json({
+      currentClock: clock.now().toISOString(),
+      offsetMinutes: 0,
+    });
+  } catch (err) {
+    next(err);
+  }
 });

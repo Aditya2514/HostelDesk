@@ -22,6 +22,8 @@ const advanceTimeSchema = z.object({
   minutes: z.number().int().positive("Minutes must be a positive integer"),
 });
 
+import { JobsService } from "../../jobs";
+
 demoRouter.post("/advance-time", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = advanceTimeSchema.safeParse(req.body);
@@ -30,9 +32,19 @@ demoRouter.post("/advance-time", async (req: Request, res: Response, next: NextF
     }
 
     const newTime = await clock.advanceMinutes(parsed.data.minutes);
+
+    // Immediately evaluate escalations & auto-closes triggered by time-travel
+    let jobsSummary = undefined;
+    try {
+      jobsSummary = await JobsService.runTick();
+    } catch (err) {
+      console.error("[advance-time] Jobs tick failed after time advance:", err);
+    }
+
     res.status(200).json({
       currentClock: newTime.toISOString(),
       offsetMinutes: clock.getOffsetMinutes(),
+      jobsRan: jobsSummary,
     });
   } catch (err) {
     next(err);

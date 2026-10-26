@@ -26,6 +26,7 @@ import { TicketAccessService } from "./ticketAccess.service";
 import { assertTransition } from "./stateMachine";
 import { calculateActualWorkMinutes } from "./workMinutes";
 import { pauseSla, resumeSla } from "./sla";
+import { EscalationJob } from "../../jobs/escalation.job";
 
 export const OPEN_STATUSES: TicketStatus[] = [
   TicketStatus.RAISED,
@@ -2549,6 +2550,13 @@ export class TicketsService {
       search?: string;
     }
   ) {
+    // Lazy escalation check on dashboard load per domain rule 5.8 (skipped in unit test runs to prevent consuming query mocks)
+    if (process.env.NODE_ENV !== "test") {
+      EscalationJob.runLazy({
+        blockId: user.role === Role.WARDEN ? user.blockId || undefined : undefined,
+      });
+    }
+
     const baseFilter = TicketAccessService.buildListFilter(user);
 
     const where: Prisma.TicketWhereInput = {

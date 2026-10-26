@@ -30,17 +30,17 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
 
-import { EtaService } from "./modules/scheduling/eta.service";
+import { JobsService } from "./jobs";
 
-// Scheduled jobs keep-awake endpoint (recomputes all staff queues)
+// Scheduled jobs keep-awake endpoint (escalations, auto-close, and staff queues)
 app.post("/api/jobs/tick", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const secretHeader = req.headers["x-jobs-secret"];
     if (!secretHeader || secretHeader !== env.JOBS_SECRET) {
       throw new AppError(401, "UNAUTHORIZED", "Invalid or missing jobs secret header");
     }
-    const result = await EtaService.recomputeAllStaffQueues("TICK");
-    res.status(200).json({ ran: ["recompute_staff_queues"], ...result });
+    const result = await JobsService.runTick();
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

@@ -202,12 +202,21 @@ export class TicketsService {
       // 2. Format human-readable ticket code e.g. HD-0001
       const formattedCode = `HD-${String(createdTicket.number).padStart(4, "0")}`;
 
-      // 3. Routing: pick staff member
-      const assignedStaffId = await RoutingService.chooseAssignee(
-        { categoryId: category.id, trade: category.trade },
+      // 3. Routing: pick staff member with earliest simulated finish
+      const routingResult = await RoutingService.chooseAssignee(
+        {
+          id: createdTicket.id,
+          categoryId: category.id,
+          blockId,
+          floor,
+          priority,
+          createdAt: now,
+          trade: category.trade,
+        },
         tx
       );
 
+      const assignedStaffId = routingResult?.staffId ?? null;
       const finalStatus = assignedStaffId ? TicketStatus.ASSIGNED : TicketStatus.RAISED;
 
       const updatedTicket = await tx.ticket.update({
@@ -216,8 +225,39 @@ export class TicketsService {
           code: formattedCode,
           assignedToId: assignedStaffId,
           status: finalStatus,
+          etaP50At: routingResult?.etaP50At ?? null,
+          etaP80At: routingResult?.etaP80At ?? null,
+          etaNotifiedP50At: routingResult?.etaP50At ?? null,
         },
       });
+
+      if (routingResult) {
+        await tx.ticketPrediction.create({
+          data: {
+            ticketId: updatedTicket.id,
+            staffId: routingResult.staffId,
+            predictedP50At: routingResult.etaP50At,
+            predictedP80At: routingResult.etaP80At,
+            createdAt: now,
+          },
+        });
+      } else {
+        // Ticket stays RAISED and warden is notified
+        const warden = await tx.user.findFirst({
+          where: { role: Role.WARDEN, blockId, isActive: true },
+        });
+        if (warden) {
+          await NotificationService.notify(
+            [warden.id],
+            {
+              ticketId: updatedTicket.id,
+              type: "NO_STAFF_AVAILABLE",
+              message: `Ticket ${formattedCode} requires manual assignment: no staff shift available within 14 days.`,
+            },
+            tx
+          );
+        }
+      }
 
       // 4. Record event timeline
       await tx.ticketEvent.create({

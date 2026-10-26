@@ -1,0 +1,49 @@
+import { Router } from "express";
+import { Role } from "@prisma/client";
+import { requireAuth, requireRole } from "../../middleware/auth.middleware";
+import { TicketsController } from "./tickets.controller";
+
+export const ticketRouter = Router();
+
+// All ticket endpoints require authentication
+ticketRouter.use(requireAuth);
+
+// Creation (STUDENT only)
+ticketRouter.post("/", requireRole(Role.STUDENT), TicketsController.create);
+
+// List and detail
+ticketRouter.get("/", TicketsController.list);
+ticketRouter.get("/:id", TicketsController.getById);
+ticketRouter.get("/:id/events", TicketsController.getEvents);
+
+// Follow common area ticket
+ticketRouter.post("/:id/follow", requireRole(Role.STUDENT), TicketsController.follow);
+
+// Staff actions
+ticketRouter.post("/:id/start", requireRole(Role.STAFF), TicketsController.start);
+
+// Warden / Chief Warden actions
+ticketRouter.patch(
+  "/:id/priority",
+  requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
+  TicketsController.updatePriority
+);
+ticketRouter.post(
+  "/:id/reassign",
+  requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
+  TicketsController.reassign
+);
+ticketRouter.post(
+  "/:id/assign",
+  requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
+  TicketsController.assign
+);
+ticketRouter.post(
+  "/:id/reject",
+  requireRole(Role.WARDEN, Role.CHIEF_WARDEN, Role.ADMIN),
+  TicketsController.reject
+);
+
+// Comments
+ticketRouter.post("/:id/comments", TicketsController.addComment);
+ticketRouter.get("/:id/comments", TicketsController.getComments);

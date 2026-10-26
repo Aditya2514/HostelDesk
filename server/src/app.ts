@@ -40,6 +40,18 @@ app.post("/api/jobs/tick", (req: Request, res: Response) => {
 import { authRouter } from "./modules/auth/auth.routes";
 app.use("/api/auth", authRouter);
 
+// Ticket routes
+import { ticketRouter } from "./modules/tickets/tickets.routes";
+app.use("/api/tickets", ticketRouter);
+
+// Notification routes
+import { notificationRouter } from "./modules/notifications/notification.routes";
+app.use("/api/notifications", notificationRouter);
+
+// Category routes
+import { categoryRouter } from "./modules/categories/categories.routes";
+app.use("/api/categories", categoryRouter);
+
 // Admin demo routes
 import { demoRouter } from "./modules/admin/demo.routes";
 app.use("/api/admin/demo", demoRouter);

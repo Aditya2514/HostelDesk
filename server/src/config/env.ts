@@ -10,9 +10,9 @@ const envSchema = z.object({
   DIRECT_URL: z.string().min(1, "DIRECT_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   CLIENT_ORIGIN: z.string().min(1, "CLIENT_ORIGIN is required"),
-  CLOUDINARY_CLOUD_NAME: z.string().default("demo-cloud"),
-  CLOUDINARY_API_KEY: z.string().default("1234567890"),
-  CLOUDINARY_API_SECRET: z.string().default("secret"),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
+  CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
+  CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
   JOBS_SECRET: z.string().min(8, "JOBS_SECRET must be at least 8 characters"),
   DEMO_MODE: z
     .string()

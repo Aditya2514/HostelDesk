@@ -8,7 +8,7 @@ const router = Router();
 
 // Strictly ADMIN only for all /api/admin endpoints
 router.use(requireAuth);
-router.use(requireRole([Role.ADMIN]));
+router.use(requireRole(Role.ADMIN));
 
 /**
  * GET /api/admin/audit-log

@@ -76,14 +76,14 @@ async function main() {
   }
 
   // Define staff speed factors: one electrician noticeably slow (x1.4), one plumber fast (x0.8)
-  const electricians = allStaff.filter((s) => s.trade === Trade.ELECTRICIAN);
-  const plumbers = allStaff.filter((s) => s.trade === Trade.PLUMBER);
-  const slowElectricianId = electricians[0]?.id;
+  const electricians = allStaff.filter((s) => s.trade === Trade.ELECTRICIAN).sort((a, b) => a.email.localeCompare(b.email));
+  const plumbers = allStaff.filter((s) => s.trade === Trade.PLUMBER).sort((a, b) => a.email.localeCompare(b.email));
+  const slowElectricianId = electricians.find((e) => e.email === "electrician1@hosteldesk.dev")?.id || electricians[0]?.id;
   const fastPlumberId = plumbers[0]?.id;
 
   const getStaffSpeedFactor = (staffId: string): number => {
-    if (staffId === slowElectricianId) return 1.25;
-    if (staffId === fastPlumberId) return 0.85;
+    if (staffId === slowElectricianId) return 1.4;
+    if (staffId === fastPlumberId) return 0.8;
     return 1.0;
   };
 

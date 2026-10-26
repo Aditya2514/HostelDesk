@@ -191,6 +191,9 @@ export class AnalyticsService {
       escalationsByLevel,
       syntheticShare,
       meta: {
+        scope: {
+          blockId: scope.blockId ?? null,
+        },
         predictionErrorDefinition: PREDICTION_ERROR_DEFINITION,
         windowStart: windowStart.toISOString(),
         windowEnd: now.toISOString(),
@@ -496,6 +499,7 @@ export class AnalyticsService {
         floor: r.floor,
         blockId: r.blockId,
         blockName: r.blockName,
+        block: r.blockName,
         trade: r.trade,
         count: r.count,
         latestTicketDate: r.latestTicketDate.toISOString(),

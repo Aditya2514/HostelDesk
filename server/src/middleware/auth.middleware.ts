@@ -66,13 +66,14 @@ export const requireAuth = async (
   }
 };
 
-export const requireRole = (...roles: Role[]) => {
+export const requireRole = (...roles: (Role | Role[] | string | string[])[]) => {
+  const allowed = roles.flat() as string[];
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
       throw new AppError(401, "UNAUTHORIZED", "Authentication required");
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!allowed.includes(req.user.role)) {
       throw new AppError(403, "FORBIDDEN", "Forbidden: insufficient permissions");
     }
 

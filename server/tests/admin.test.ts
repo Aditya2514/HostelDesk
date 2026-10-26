@@ -10,6 +10,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+import jwt from "jsonwebtoken";
+import { env } from "../src/config/env";
+
 describe("Admin Module — Audit Log & Access Control", () => {
   it("rejects unauthenticated requests to /api/admin/audit-log with 401", async () => {
     const res = await request(app).get("/api/admin/audit-log");
@@ -19,6 +22,42 @@ describe("Admin Module — Audit Log & Access Control", () => {
   it("rejects unauthenticated requests to /api/admin/rooms with 401", async () => {
     const res = await request(app).get("/api/admin/rooms");
     expect(res.status).toBe(401);
+  });
+
+  it("rejects non-admin roles (STUDENT, WARDEN) with 403 FORBIDDEN on every admin endpoint", async () => {
+    const studentUser = { id: "student-1", name: "Student", email: "student@test.com", role: Role.STUDENT, isActive: true };
+    const wardenUser = { id: "warden-1", name: "Warden", email: "warden@test.com", role: Role.WARDEN, blockId: "block-a", isActive: true };
+
+    const studentToken = jwt.sign({ id: "student-1", role: Role.STUDENT }, env.JWT_SECRET);
+    const wardenToken = jwt.sign({ id: "warden-1", role: Role.WARDEN }, env.JWT_SECRET);
+
+    const endpoints = [
+      { method: "get", url: "/api/admin/audit-log" },
+      { method: "get", url: "/api/admin/rooms" },
+      { method: "get", url: "/api/admin/students" },
+      { method: "post", url: "/api/admin/occupancy/move" },
+      { method: "post", url: "/api/admin/occupancy/occ-1/end" },
+      { method: "post", url: "/api/admin/import/students" },
+      { method: "get", url: "/api/admin/staff" },
+      { method: "post", url: "/api/admin/staff" },
+      { method: "patch", url: "/api/admin/staff/staff-1" },
+      { method: "put", url: "/api/admin/staff/staff-1/shifts" },
+      { method: "get", url: "/api/admin/categories" },
+      { method: "post", url: "/api/admin/categories" },
+      { method: "patch", url: "/api/admin/categories/cat-1" },
+    ];
+
+    for (const ep of endpoints) {
+      // Test STUDENT
+      vi.spyOn(prisma.user, "findUnique").mockResolvedValue(studentUser as any);
+      const studentRes = await (request(app) as any)[ep.method](ep.url).set("Cookie", [`token=${studentToken}`]);
+      expect(studentRes.status, `Expected 403 for student on ${ep.method.toUpperCase()} ${ep.url}`).toBe(403);
+
+      // Test WARDEN
+      vi.spyOn(prisma.user, "findUnique").mockResolvedValue(wardenUser as any);
+      const wardenRes = await (request(app) as any)[ep.method](ep.url).set("Cookie", [`token=${wardenToken}`]);
+      expect(wardenRes.status, `Expected 403 for warden on ${ep.method.toUpperCase()} ${ep.url}`).toBe(403);
+    }
   });
 
   it("AuditService.logAction writes an audit log entry in transaction and retrieves it", async () => {

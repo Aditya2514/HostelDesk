@@ -16,6 +16,7 @@
     "smoke:phase4": "tsx scripts/smoke-phase4.ts",
     "smoke:phase5": "tsx scripts/smoke-phase5.ts",
     "smoke:phase6": "tsx scripts/smoke-phase6.ts",
+    "smoke:prod": "tsx scripts/smoke-prod.ts",
     "check:cloudinary": "tsx scripts/check-cloudinary.ts"
   },
   "prisma": {

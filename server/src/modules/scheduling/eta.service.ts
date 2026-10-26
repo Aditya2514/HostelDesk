@@ -63,6 +63,7 @@ export type EtaReason =
   | "WORK_STARTED" // the staff member started a job
   | "TICKET_RESOLVED" // a ticket was resolved and completed
   | "TICKET_DISPUTED" // a ticket was disputed and returned to queue
+  | "ROOM_LOCKED" // staff reported room locked, awaiting access
   | "ACCESS_RESPONDED" // occupant chose access slot or 15min boost
   | "ON_HOLD" // ticket put on hold
   | "RESUMED" // ticket resumed from hold
@@ -86,6 +87,9 @@ export function studentDelayReason(reason: EtaReason, isTriggerTicket: boolean):
       return isTriggerTicket
         ? "your ticket was moved to a different staff member's queue"
         : "a more urgent issue was added ahead of yours";
+    case "ROOM_LOCKED":
+    case "ON_HOLD":
+      return "the staff member paused work on a prior issue";
     case "WORK_STARTED":
     case "TICK":
       return "the staff member's current job is taking longer than expected";

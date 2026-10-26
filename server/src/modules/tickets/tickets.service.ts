@@ -1001,7 +1001,7 @@ export class TicketsService {
         tx
       );
 
-      let finalStatus = TicketStatus.REOPENED;
+      let finalStatus: TicketStatus = TicketStatus.REOPENED;
 
       if (route) {
         finalStatus = TicketStatus.ASSIGNED;
@@ -1226,7 +1226,7 @@ export class TicketsService {
       },
     });
 
-    const slots: Array<{ start: string; end: string; label: string }> = [];
+    const slots: Array<{ start: string; slotStart?: string; end: string; slotEnd?: string; label: string }> = [];
 
     for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
       const targetInstant = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
@@ -1844,7 +1844,7 @@ export class TicketsService {
         tx
       );
 
-      let finalStatus = TicketStatus.REOPENED;
+      let finalStatus: TicketStatus = TicketStatus.REOPENED;
 
       if (route) {
         finalStatus = TicketStatus.ASSIGNED;
@@ -2432,7 +2432,6 @@ export class TicketsService {
             type: true,
             status: true,
             reason: true,
-            decision: true,
             decisionNote: true,
             createdAt: true,
             decidedAt: true,

@@ -6,6 +6,7 @@ import { RoomBrowser } from "../components/RoomBrowser";
 import { AnalyticsView } from "../components/AnalyticsView";
 import { AdminAuditLogView } from "../components/AdminAuditLogView";
 import { CsvImportView } from "../components/CsvImportView";
+import { StaffManagementView } from "../components/StaffManagementView";
 import {
   Settings,
   Clock,
@@ -17,9 +18,10 @@ import {
   BarChart3,
   History,
   Upload,
+  Users,
 } from "lucide-react";
 
-type AdminTab = "rooms" | "import" | "analytics" | "audit" | "timetravel";
+type AdminTab = "rooms" | "import" | "staff" | "analytics" | "audit" | "timetravel";
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -132,6 +134,18 @@ export const AdminDashboard: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab("staff")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === "staff"
+                ? "bg-rose-500 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Staff &amp; Shifts</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("analytics")}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
               activeTab === "analytics"
@@ -174,6 +188,8 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === "rooms" && <RoomBrowser />}
 
         {activeTab === "import" && <CsvImportView />}
+
+        {activeTab === "staff" && <StaffManagementView />}
 
         {activeTab === "analytics" && <AnalyticsView />}
 

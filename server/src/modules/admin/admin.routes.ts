@@ -142,5 +142,85 @@ router.post(
   }
 );
 
+import { StaffService } from "./staff.service";
+
+/**
+ * GET /api/admin/staff
+ * All staff with trade, active flag, open-ticket count and shifts
+ */
+router.get("/staff", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staff = await StaffService.getStaff();
+    res.json({ staff });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/admin/staff
+ * Create staff account with temporary password
+ */
+router.post("/staff", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, trade } = req.body;
+    const result = await StaffService.createStaff({
+      actorId: req.user!.id,
+      name,
+      email,
+      trade,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/admin/staff/:id
+ * Toggle staff active status; if open tickets exist and reassignOpenTickets: false -> 409
+ */
+router.patch("/staff/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.params.id;
+    const { isActive, reassignOpenTickets } = req.body;
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: "isActive (boolean) is required" },
+      });
+    }
+
+    const result = await StaffService.updateStaffStatus({
+      actorId: req.user!.id,
+      staffId,
+      isActive,
+      reassignOpenTickets: Boolean(reassignOpenTickets),
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/admin/staff/:id/shifts
+ * Replaces all shift windows for a staff member
+ */
+router.put("/staff/:id/shifts", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.params.id;
+    const { shifts } = req.body;
+    const result = await StaffService.updateStaffShifts({
+      actorId: req.user!.id,
+      staffId,
+      shifts: shifts || [],
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export { router as adminRoutes };
+
 

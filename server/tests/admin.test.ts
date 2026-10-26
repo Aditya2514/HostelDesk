@@ -1,10 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
 import { AuditService } from "../src/modules/admin/audit.service";
 import { OccupancyService } from "../src/modules/admin/occupancy.service";
 import { prisma } from "../src/lib/prisma";
-import { Role } from "@prisma/client";
+import { Role, Trade } from "@prisma/client";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("Admin Module — Audit Log & Access Control", () => {
   it("rejects unauthenticated requests to /api/admin/audit-log with 401", async () => {
@@ -350,4 +354,201 @@ fresh.student@example.com,Fresh Student,A,101,2026-11-01`;
     );
   });
 });
+
+import { StaffService } from "../src/modules/admin/staff.service";
+import { RoutingService } from "../src/modules/scheduling/routing.service";
+
+describe("Admin Module — Staff Management & Shift Editor Rules", () => {
+  it("rejects shift windows with invalid bounds or start >= end", async () => {
+    vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
+      id: "staff-1",
+      role: Role.STAFF,
+    } as any);
+
+    // startMinute >= endMinute
+    await expect(
+      StaffService.updateStaffShifts({
+        actorId: "admin-1",
+        staffId: "staff-1",
+        shifts: [{ weekday: 1, startMinute: 600, endMinute: 500 }],
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    // endMinute > 1440
+    await expect(
+      StaffService.updateStaffShifts({
+        actorId: "admin-1",
+        staffId: "staff-1",
+        shifts: [{ weekday: 1, startMinute: 600, endMinute: 1500 }],
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+  });
+
+  it("rejects overlapping shift windows on the same weekday", async () => {
+    vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
+      id: "staff-1",
+      role: Role.STAFF,
+    } as any);
+
+    // Overlapping: [540, 720] (9am-12pm) and [660, 900] (11am-3pm) on Monday
+    await expect(
+      StaffService.updateStaffShifts({
+        actorId: "admin-1",
+        staffId: "staff-1",
+        shifts: [
+          { weekday: 1, startMinute: 540, endMinute: 720 },
+          { weekday: 1, startMinute: 660, endMinute: 900 },
+        ],
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "OVERLAPPING_SHIFTS",
+    });
+  });
+
+  it("saves valid non-overlapping shift windows and creates audit record in transaction", async () => {
+    vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
+      id: "staff-1",
+      role: Role.STAFF,
+    } as any);
+
+    const mockTx: any = {
+      staffShift: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
+        createMany: vi.fn().mockResolvedValue({ count: 2 }),
+      },
+      adminAuditLog: {
+        create: vi.fn().mockResolvedValue({ id: "audit-shifts" }),
+      },
+    };
+
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (cb: any) => cb(mockTx));
+
+    const result = await StaffService.updateStaffShifts({
+      actorId: "admin-1",
+      staffId: "staff-1",
+      shifts: [
+        { weekday: 1, startMinute: 540, endMinute: 720 },
+        { weekday: 1, startMinute: 780, endMinute: 1020 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockTx.staffShift.deleteMany).toHaveBeenCalledWith({ where: { staffId: "staff-1" } });
+    expect(mockTx.staffShift.createMany).toHaveBeenCalledWith({
+      data: [
+        { staffId: "staff-1", weekday: 1, startMinute: 540, endMinute: 720 },
+        { staffId: "staff-1", weekday: 1, startMinute: 780, endMinute: 1020 },
+      ],
+    });
+    expect(mockTx.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "UPDATE_SHIFTS",
+          actorId: "admin-1",
+        }),
+      })
+    );
+  });
+
+  it("deactivating staff with open tickets without flag throws 409 HAS_OPEN_TICKETS", async () => {
+    vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
+      id: "staff-1",
+      name: "Plumber One",
+      role: Role.STAFF,
+      trade: Trade.PLUMBER,
+      isActive: true,
+    } as any);
+
+    vi.spyOn(prisma.ticket, "findMany").mockResolvedValue([
+      { id: "tick-1", code: "HD-0010", title: "Pipe leak", status: "ASSIGNED", category: { id: "c1", trade: Trade.PLUMBER } } as any,
+    ]);
+
+    await expect(
+      StaffService.updateStaffStatus({
+        actorId: "admin-1",
+        staffId: "staff-1",
+        isActive: false,
+        reassignOpenTickets: false,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: "HAS_OPEN_TICKETS",
+    });
+  });
+
+  it("deactivating staff with open tickets and reassign flag re-routes tickets and audits", async () => {
+    vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
+      id: "staff-1",
+      name: "Plumber One",
+      role: Role.STAFF,
+      trade: Trade.PLUMBER,
+      isActive: true,
+    } as any);
+
+    vi.spyOn(prisma.ticket, "findMany").mockResolvedValue([
+      {
+        id: "tick-1",
+        code: "HD-0010",
+        title: "Pipe leak",
+        status: "ASSIGNED",
+        categoryId: "c1",
+        blockId: "b1",
+        category: { id: "c1", trade: Trade.PLUMBER },
+      } as any,
+    ]);
+
+    vi.spyOn(RoutingService, "chooseAssignee").mockResolvedValue({
+      staffId: "staff-2",
+      etaP50At: new Date(),
+      etaP80At: new Date(),
+      explanation: {} as any,
+    });
+
+    const mockTx: any = {
+      user: { update: vi.fn().mockResolvedValue({ id: "staff-1", isActive: false }) },
+      ticket: { update: vi.fn().mockResolvedValue({ id: "tick-1" }) },
+      ticketPrediction: { create: vi.fn().mockResolvedValue({ id: "pred-1" }) },
+      ticketEvent: { create: vi.fn().mockResolvedValue({ id: "event-1" }) },
+      adminAuditLog: { create: vi.fn().mockResolvedValue({ id: "audit-deactivate" }) },
+    };
+
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (cb: any) => cb(mockTx));
+
+    const result = await StaffService.updateStaffStatus({
+      actorId: "admin-1",
+      staffId: "staff-1",
+      isActive: false,
+      reassignOpenTickets: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.reassignedCount).toBe(1);
+    expect(mockTx.user.update).toHaveBeenCalledWith({
+      where: { id: "staff-1" },
+      data: { isActive: false },
+    });
+    expect(mockTx.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "tick-1" },
+        data: expect.objectContaining({ assignedToId: "staff-2" }),
+      })
+    );
+    expect(mockTx.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "DEACTIVATE_STAFF",
+          actorId: "admin-1",
+        }),
+      })
+    );
+  });
+});
+
 

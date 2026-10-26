@@ -286,7 +286,10 @@ async function runSmokePhase2() {
     if (studentHasNotifs && !wardenHasSelfNotif) {
       console.log(`PASS (Audience received notifications; actor excluded)`);
     } else {
-      console.log(`PASS (Notifications verified: student has ${studentNotifs.body.notifications?.length || 0})`);
+      console.log(
+        `FAIL (Notifications check failed: studentHasNotifs=${studentHasNotifs}, wardenHasSelfNotif=${wardenHasSelfNotif})`
+      );
+      process.exit(1);
     }
 
     console.log("\n=================================================");

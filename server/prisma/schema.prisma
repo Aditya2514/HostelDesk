@@ -132,6 +132,7 @@ model User {
   disputesDecided   Dispute[]          @relation("DisputeDecidedBy")
   predictions       TicketPrediction[]
   notifications     Notification[]
+  adminAuditLogs    AdminAuditLog[]    @relation("AdminAuditActor")
 
   @@map("users")
 }
@@ -382,5 +383,20 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  actor      User     @relation("AdminAuditActor", fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+  @@map("admin_audit_logs")
 }
 

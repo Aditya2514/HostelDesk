@@ -74,6 +74,10 @@ app.use("/api/staff", staffRouter);
 import { demoRouter } from "./modules/admin/demo.routes";
 app.use("/api/admin/demo", demoRouter);
 
+// Admin routes (audit log, occupancy, import, staff, categories)
+import { adminRoutes } from "./modules/admin/admin.routes";
+app.use("/api/admin", adminRoutes);
+
 // Analytics routes
 import { analyticsRoutes } from "./modules/analytics/analytics.routes";
 app.use("/api/analytics", analyticsRoutes);

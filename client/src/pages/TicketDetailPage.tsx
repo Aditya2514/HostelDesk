@@ -77,6 +77,7 @@ export const TicketDetailPage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ["ticket", id] });
     queryClient.invalidateQueries({ queryKey: ["ticket-events", id] });
     queryClient.invalidateQueries({ queryKey: ["ticket-comments", id] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-eta-explanation", id] });
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
   };
 

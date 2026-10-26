@@ -15,7 +15,12 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // Retry once on network/server errors, but never on 4xx (a 404 or 403 won't fix itself,
+      // and retrying only delays the error message the user should see).
+      retry: (failureCount, error: any) => {
+        if (error?.status >= 400 && error?.status < 500) return false;
+        return failureCount < 1;
+      },
       refetchOnWindowFocus: false,
     },
   },

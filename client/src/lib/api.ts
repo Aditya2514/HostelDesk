@@ -1,5 +1,8 @@
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
+/** Fired on any 401 from a non-auth endpoint; AuthContext listens and logs the user out locally. */
+export const SESSION_EXPIRED_EVENT = "hosteldesk:session-expired";
+
 export class ApiError extends Error {
   public code: string;
   public status: number;
@@ -61,6 +64,12 @@ export async function apiRequest<T = any>(
   }
 
   if (!response.ok) {
+    // Session expired or cookie missing: tell the auth layer so the app returns to the login
+    // page instead of leaving the user on a page where every request fails.
+    if (response.status === 401 && !endpoint.startsWith("/api/auth/")) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+
     const errorData = jsonResult?.error;
     const message = errorData?.message || jsonResult?.message || "An unexpected error occurred";
     const code = errorData?.code || "ERROR";

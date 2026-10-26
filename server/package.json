@@ -19,6 +19,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -27,6 +28,7 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "multer": "^2.5.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -36,10 +38,11 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.8",
     "@types/morgan": "^1.9.9",
+    "@types/multer": "^2.3.0",
     "@types/node": "^22.13.4",
+    "@types/supertest": "^6.0.2",
     "prisma": "^5.22.0",
     "supertest": "^7.0.0",
-    "@types/supertest": "^6.0.2",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"

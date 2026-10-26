@@ -2,6 +2,8 @@ import { Router } from "express";
 import { Role } from "@prisma/client";
 import { requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { TicketsController } from "./tickets.controller";
+import { photoUploadMiddleware } from "../evidence/attachments.validator";
+import { AttachmentsController } from "../evidence/attachments.controller";
 
 export const ticketRouter = Router();
 
@@ -16,6 +18,9 @@ ticketRouter.get("/", TicketsController.list);
 ticketRouter.get("/:id", TicketsController.getById);
 ticketRouter.get("/:id/events", TicketsController.getEvents);
 ticketRouter.get("/:id/eta-explanation", TicketsController.getEtaExplanation);
+
+// Evidence photo uploads
+ticketRouter.post("/:id/attachments", photoUploadMiddleware, AttachmentsController.upload);
 
 // Follow common area ticket
 ticketRouter.post("/:id/follow", requireRole(Role.STUDENT), TicketsController.follow);

@@ -980,6 +980,23 @@ export class TicketsService {
         assignedTo: { select: { id: true, name: true, trade: true } },
         raisedBy: { select: { id: true, name: true } },
         followers: { select: { userId: true } },
+        attachments: {
+          select: {
+            id: true,
+            url: true,
+            publicId: true,
+            kind: true,
+            createdAt: true,
+            uploader: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
         _count: { select: { followers: true, comments: true } },
       },
     });

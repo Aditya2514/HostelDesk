@@ -313,9 +313,12 @@ async function main() {
       scope,
     });
 
-    // Store each prediction as startedAt + estimate (i.e. measure work-time accuracy, which is what the estimator learns)
-    const predictedP50At = new Date(t.startedAt.getTime() + predictionEst.p50Minutes * 60 * 1000);
-    const predictedP80At = new Date(t.startedAt.getTime() + predictionEst.p80Minutes * 60 * 1000);
+    // Store each prediction computed using shift working minutes (measured same way as resolvedAt)
+    const staffShifts = staffShiftMap.get(t.staffId) || [];
+    const predictedP50At = addWorkingMinutes(t.startedAt, predictionEst.p50Minutes, staffShifts) ||
+      new Date(t.startedAt.getTime() + predictionEst.p50Minutes * 60 * 1000);
+    const predictedP80At = addWorkingMinutes(t.startedAt, predictionEst.p80Minutes, staffShifts) ||
+      new Date(t.startedAt.getTime() + predictionEst.p80Minutes * 60 * 1000);
 
     const absError = Math.abs(predictionEst.p50Minutes - t.actualWorkMinutes);
     allPredictionErrors.push(absError);

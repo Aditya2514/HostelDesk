@@ -86,7 +86,7 @@ export class OccupancyService {
           name: true,
           email: true,
           isActive: true,
-          roomOccupancies: {
+          occupancies: {
             where: {
               fromDate: { lte: now },
               OR: [{ toDate: null }, { toDate: { gt: now } }],
@@ -106,7 +106,7 @@ export class OccupancyService {
 
     return {
       students: students.map((s) => {
-        const occ = s.roomOccupancies[0];
+        const occ = s.occupancies[0];
         return {
           id: s.id,
           name: s.name,

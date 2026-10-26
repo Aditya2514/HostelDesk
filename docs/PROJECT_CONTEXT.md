@@ -291,11 +291,12 @@ Each phase ends with: the app running, tests passing, commits pushed, and a shor
 
 ## 8. Definition of done (whole project)
 
-- [ ] All workflows in section 5 work end-to-end in the **deployed** app
-- [ ] Server-side authorization on every endpoint
-- [ ] Unit tests for: state machine, duration estimator, schedule simulation, SLA pause/escalation, code attempt limit
-- [ ] No secrets in git; `.env.example` complete
-- [ ] README with: problem, users, solution, features, stack **with justifications**, architecture, **Scalability & growth path** (section 4.1), setup, env vars, deployment links, and an honest note that historical data is **synthetic**
-- [ ] Rules in section 4.1 hold: stateless server, idempotent externally triggered jobs, pooled DB connection, paginated lists
-- [ ] cron-job.org pinging `/api/jobs/tick` every 5 min in production (keeps Render awake)
-- [ ] Demo accounts listed in the README (one per role)
+- [x] All workflows in section 5 work end-to-end in the **deployed** app
+- [x] Server-side authorization on every endpoint
+- [x] Unit tests for: state machine, duration estimator, schedule simulation, SLA pause/escalation, code attempt limit
+- [x] No secrets in git; `.env.example` complete
+- [x] README with: problem, users, solution, features, stack **with justifications**, architecture, **Scalability & growth path** (section 4.1), setup, env vars, deployment links, and an honest note that historical data is **synthetic**
+- [x] Rules in section 4.1 hold: stateless server, idempotent externally triggered jobs, pooled DB connection, paginated lists
+- [ ] cron-job.org pinging `/api/jobs/tick` every 5 min in production (keeps Render awake; user configuration step)
+- [x] Demo accounts listed in the README (one per role)
+

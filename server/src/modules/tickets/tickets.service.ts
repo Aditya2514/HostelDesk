@@ -1269,7 +1269,9 @@ export class TicketsService {
 
             slots.push({
               start: slotStart.toISOString(),
+              slotStart: slotStart.toISOString(),
               end: slotEnd.toISOString(),
+              slotEnd: slotEnd.toISOString(),
               label: `${startLabel} - ${endLabel}`,
             });
           }
@@ -1471,6 +1473,7 @@ export class TicketsService {
 
       return {
         success: true,
+        dispute,
         disputeId: dispute.id,
         status: dispute.status,
       };
@@ -1728,6 +1731,7 @@ export class TicketsService {
 
       return {
         success: true,
+        dispute,
         disputeId: dispute.id,
         status: dispute.status,
       };

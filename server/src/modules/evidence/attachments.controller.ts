@@ -7,11 +7,11 @@ export class AttachmentsController {
   static async upload(req: Request, res: Response, next: NextFunction) {
     try {
       const ticketId = req.params.id;
-      const kind = req.body.kind as AttachmentKind;
+      const kind = (req.body.kind || req.body.role) as AttachmentKind;
       const files = req.files as Express.Multer.File[];
 
       if (!kind) {
-        throw new AppError(400, "KIND_REQUIRED", "Body field 'kind' is required (BEFORE, AFTER, or DOOR)");
+        throw new AppError(400, "KIND_REQUIRED", "Field 'kind' or 'role' is required (BEFORE, AFTER, or DOOR)");
       }
 
       const attachments = await AttachmentsService.uploadPhotos(
@@ -24,6 +24,7 @@ export class AttachmentsController {
       res.status(201).json({
         success: true,
         attachments,
+        attachment: attachments[0],
       });
     } catch (err) {
       next(err);

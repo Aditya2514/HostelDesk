@@ -76,4 +76,4 @@ export const photoUploadMiddleware = multer({
     fileSize: MAX_PHOTO_SIZE,
     files: MAX_PHOTOS_PER_REQUEST,
   },
-}).array("photos", MAX_PHOTOS_PER_REQUEST);
+}).any();

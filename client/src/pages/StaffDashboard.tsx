@@ -15,6 +15,7 @@ import {
   Calendar,
   ChevronRight,
 } from "lucide-react";
+import { formatFriendlyIst } from "../lib/formatTime";
 
 export const StaffDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -30,12 +31,22 @@ export const StaffDashboard: React.FC = () => {
 
   const tickets = ticketsData?.tickets ?? [];
 
+  // Fetch planned schedule ("My day")
+  const { data: scheduleData, isLoading: isScheduleLoading } = useQuery({
+    queryKey: ["staff-schedule", user?.id],
+    queryFn: () => api.get<{ staff: any; shifts: any[]; jobs: any[] }>(`/api/staff/${user?.id}/schedule`),
+    enabled: !!user?.id,
+  });
+
+  const plannedJobs = scheduleData?.jobs ?? [];
+
   // Start work mutation
   const startWorkMutation = useMutation({
     mutationFn: (ticketId: string) => api.post(`/api/tickets/${ticketId}/start`),
     onSuccess: () => {
       setActionError(null);
       queryClient.invalidateQueries({ queryKey: ["staff-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["staff-schedule", user?.id] });
     },
     onError: (err: any) => {
       setActionError(err.message || "Failed to start work");
@@ -79,10 +90,86 @@ export const StaffDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* My Day: Planned Schedule */}
+        <div className="mb-8 bg-slate-900/90 border border-amber-900/30 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>My Day</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Planned Order
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Calculated sequence based on shift windows, ticket priorities, and estimated duration
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-slate-400">
+              {plannedJobs.length} {plannedJobs.length === 1 ? "job" : "jobs"} in queue
+            </span>
+          </div>
+
+          {isScheduleLoading ? (
+            <div className="py-8 flex justify-center">
+              <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+            </div>
+          ) : plannedJobs.length === 0 ? (
+            <p className="text-xs text-slate-500 py-3 text-center">
+              No jobs currently scheduled for today.
+            </p>
+          ) : (
+            <div className="space-y-2.5">
+              {plannedJobs.map((job, idx) => (
+                <div
+                  key={job.ticketId}
+                  onClick={() => navigate(`/tickets/${job.ticketId}`)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition gap-3"
+                >
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <span className="w-6 h-6 rounded-full bg-slate-700/80 text-amber-300 font-mono text-xs font-bold flex items-center justify-center flex-shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-xs font-bold text-slate-300">{job.code}</span>
+                        <PriorityBadge priority={job.priority} />
+                        <StatusBadge status={job.status} />
+                      </div>
+                      <h4 className="text-xs font-semibold text-white truncate mt-0.5">
+                        {job.title}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 text-xs flex-shrink-0">
+                    <div className="text-right">
+                      <div className="text-[11px] font-medium text-amber-300">
+                        Start: {formatFriendlyIst(job.startAt)}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Finish: {formatFriendlyIst(job.finishAt)}
+                      </div>
+                    </div>
+                    <span className="text-slate-400 text-[11px] flex items-center space-x-1 pl-2 border-l border-slate-700">
+                      <MapPin className="w-3 h-3 text-indigo-400" />
+                      <span>{job.location}</span>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Assigned Job Queue */}
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Your Assigned Tasks</h2>
-          <span className="text-xs text-slate-400">Ordered by Priority then Age</span>
+          <h2 className="text-base font-bold text-white">All Assigned Tasks</h2>
+          <span className="text-xs text-slate-400">Manage work status and view room details</span>
         </div>
 
         {isLoading ? (

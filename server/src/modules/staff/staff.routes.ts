@@ -6,4 +6,5 @@ export const staffRouter = Router();
 
 staffRouter.use(requireAuth);
 
+staffRouter.get("/", StaffController.listStaff);
 staffRouter.get("/:id/schedule", StaffController.getSchedule);

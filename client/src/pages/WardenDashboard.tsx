@@ -13,12 +13,19 @@ import {
   ChevronRight,
   MapPin,
   ArrowUpRight,
+  Calendar,
+  Clock,
+  UserCheck,
 } from "lucide-react";
+import { formatFriendlyIst } from "../lib/formatTime";
 
 export const WardenDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isChief = user?.role === "CHIEF_WARDEN" || user?.role === "ADMIN";
+
+  const [activeTab, setActiveTab] = useState<"tickets" | "schedules">("tickets");
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -43,6 +50,24 @@ export const WardenDashboard: React.FC = () => {
 
   const tickets = data?.tickets ?? [];
   const pagination = data?.pagination;
+
+  // Fetch all staff members for the schedules tab
+  const { data: staffListData } = useQuery({
+    queryKey: ["staff-list"],
+    queryFn: () => api.get<{ staff: any[] }>("/api/staff"),
+  });
+  const staffMembers = staffListData?.staff ?? [];
+
+  // Current staff member selection
+  const effectiveStaffId = selectedStaffId || (staffMembers.length > 0 ? staffMembers[0].id : "");
+
+  // Fetch schedule for the selected staff member
+  const { data: scheduleData, isLoading: isScheduleLoading } = useQuery({
+    queryKey: ["staff-schedule", effectiveStaffId],
+    queryFn: () => api.get<{ staff: any; shifts: any[]; jobs: any[] }>(`/api/staff/${effectiveStaffId}/schedule`),
+    enabled: !!effectiveStaffId && activeTab === "schedules",
+  });
+  const plannedJobs = scheduleData?.jobs ?? [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -75,8 +100,36 @@ export const WardenDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Controls Bar */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+        {/* Navigation Tabs */}
+        <div className="flex items-center space-x-3 mb-6 border-b border-slate-800 pb-3">
+          <button
+            onClick={() => setActiveTab("tickets")}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+              activeTab === "tickets"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Active Complaints</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("schedules")}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+              activeTab === "schedules"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Staff Schedules</span>
+          </button>
+        </div>
+
+        {activeTab === "tickets" ? (
+          <>
+            {/* Filter Controls Bar */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
             {/* Search Input */}
             <div className="relative flex-1 min-w-[200px]">
@@ -270,6 +323,135 @@ export const WardenDashboard: React.FC = () => {
             </div>
           )}
         </div>
+      </>
+    ) : (
+      /* Staff Schedules Tab */
+      <div className="space-y-6">
+        {/* Staff Selector */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Technician Schedule Inspector</h3>
+              <p className="text-xs text-slate-400">
+                View active queue order, shift windows, and simulated completion times
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <label className="text-xs font-semibold text-slate-400 whitespace-nowrap">
+              Select Staff:
+            </label>
+            <select
+              value={effectiveStaffId}
+              onChange={(e) => setSelectedStaffId(e.target.value)}
+              className="py-2 px-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {staffMembers.map((sm) => (
+                <option key={sm.id} value={sm.id}>
+                  {sm.name} — {sm.trade}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Schedule Details */}
+        {isScheduleLoading ? (
+          <div className="py-20 flex justify-center">
+            <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : !scheduleData ? (
+          <div className="py-16 text-center text-xs text-slate-500">
+            Select a staff member to view their schedule.
+          </div>
+        ) : (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+              <div>
+                <h4 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>{scheduleData.staff.name}</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+                    {scheduleData.staff.trade} Specialist
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Standard working hours: 09:00 – 18:00 IST (with 13:00 – 14:00 lunch window)
+                </p>
+              </div>
+
+              <div className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">
+                {plannedJobs.length} {plannedJobs.length === 1 ? "Job" : "Jobs"} in Active Queue
+              </div>
+            </div>
+
+            {plannedJobs.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                This technician currently has no open jobs in their schedule queue.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {plannedJobs.map((job, idx) => (
+                  <div
+                    key={job.ticketId}
+                    onClick={() => navigate(`/tickets/${job.ticketId}`)}
+                    className="p-4 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start space-x-3.5 min-w-0">
+                      <span className="w-7 h-7 rounded-full bg-slate-700 text-indigo-300 font-mono text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                        #{idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-mono text-xs font-bold text-slate-300 bg-slate-900 px-2 py-0.5 rounded">
+                            {job.code}
+                          </span>
+                          <PriorityBadge priority={job.priority} />
+                          <StatusBadge status={job.status} />
+                          <span className="text-xs text-slate-400 flex items-center space-x-1">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>{job.location}</span>
+                          </span>
+                        </div>
+                        <h5 className="text-sm font-semibold text-white truncate hover:text-indigo-300 transition">
+                          {job.title}
+                        </h5>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between md:justify-end gap-5 text-xs flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700/50">
+                      <div className="text-right">
+                        <div className="text-indigo-300 font-semibold flex items-center space-x-1 justify-end">
+                          <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Start: {formatFriendlyIst(job.startAt)}</span>
+                        </div>
+                        <div className="text-slate-400 text-[11px] mt-0.5">
+                          Est. Finish: {formatFriendlyIst(job.finishAt)}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/tickets/${job.ticketId}`);
+                        }}
+                        className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition"
+                        title="Open ticket details"
+                      >
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )}
       </main>
     </div>
   );

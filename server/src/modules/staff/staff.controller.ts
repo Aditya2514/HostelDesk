@@ -10,4 +10,13 @@ export class StaffController {
       next(error);
     }
   }
+
+  static async listStaff(req: Request, res: Response, next: NextFunction) {
+    try {
+      const staff = await StaffService.listStaff();
+      res.status(200).json({ staff });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

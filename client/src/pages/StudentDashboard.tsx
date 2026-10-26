@@ -13,7 +13,9 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
+  Clock,
 } from "lucide-react";
+import { formatFriendlyIst } from "../lib/formatTime";
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -227,9 +229,28 @@ export const StudentDashboard: React.FC = () => {
                     {ticket.title}
                   </h3>
 
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-4 leading-relaxed">
+                  <p className="text-xs text-slate-400 line-clamp-2 mb-3 leading-relaxed">
                     {ticket.description}
                   </p>
+
+                  {/* ETA Display */}
+                  <div className="mb-3.5 px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400 flex items-center space-x-1.5">
+                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>ETA</span>
+                    </span>
+                    <span className="font-semibold text-slate-200">
+                      {ticket.etaP50At ? (
+                        <span className="text-emerald-400 font-bold">{formatFriendlyIst(ticket.etaP50At)}</span>
+                      ) : ticket.status === "RAISED" ? (
+                        <span className="text-amber-400">Waiting for assignment</span>
+                      ) : ticket.status === "ON_HOLD" || ticket.status === "AWAITING_ACCESS" ? (
+                        <span className="text-amber-400">ETA paused</span>
+                      ) : (
+                        <span className="text-slate-400">{ticket.status}</span>
+                      )}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
@@ -360,10 +381,14 @@ export const StudentDashboard: React.FC = () => {
                   ))}
                 </select>
                 {selectedCategory && (
-                  <div className="mt-2 flex items-center space-x-2 text-[11px] text-slate-400">
-                    <span>Priority: </span>
-                    <PriorityBadge priority={selectedCategory.defaultPriority} />
-                    <span>· Duration: ~{selectedCategory.defaultDurationMin} min</span>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-indigo-950/70 border border-indigo-700/50 text-[11px] font-semibold text-indigo-300 shadow-sm">
+                      Typical work time: ~{selectedCategory.defaultDurationMin} min
+                    </span>
+                    <div className="flex items-center space-x-1.5 text-[11px] text-slate-400">
+                      <span>Priority:</span>
+                      <PriorityBadge priority={selectedCategory.defaultPriority} />
+                    </div>
                   </div>
                 )}
               </div>

@@ -18,7 +18,11 @@ import {
   UserCheck,
   CheckCircle2,
   AlertCircle,
+  HelpCircle,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
+import { formatFriendlyIst } from "../lib/formatTime";
 
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,11 +39,19 @@ export const TicketDetailPage: React.FC = () => {
   const [rejectReason, setRejectReason] = useState("");
 
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showWhyEstimate, setShowWhyEstimate] = useState(false);
 
   // Fetch ticket details
   const { data: ticketData, isLoading: isTicketLoading, error: ticketError } = useQuery({
     queryKey: ["ticket", id],
     queryFn: () => api.get<{ ticket: any }>(`/api/tickets/${id}`),
+    enabled: Boolean(id),
+  });
+
+  // Fetch ETA explanation
+  const { data: etaData } = useQuery({
+    queryKey: ["ticket-eta-explanation", id],
+    queryFn: () => api.get<any>(`/api/tickets/${id}/eta-explanation`),
     enabled: Boolean(id),
   });
 
@@ -263,6 +275,105 @@ export const TicketDetailPage: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Prominent ETA Banner */}
+          <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-indigo-950/60 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-indigo-950/30">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] uppercase font-bold tracking-wider text-indigo-400">
+                  Estimated Completion Range
+                </div>
+                <div className="text-base sm:text-lg font-extrabold text-white">
+                  {ticket.etaP50At ? (
+                    <>
+                      Likely by <span className="text-emerald-400">{formatFriendlyIst(ticket.etaP50At)}</span>
+                      {ticket.etaP80At && (
+                        <span className="text-slate-400 text-xs sm:text-sm font-normal">
+                          {" "}· latest around {formatFriendlyIst(ticket.etaP80At)}
+                        </span>
+                      )}
+                    </>
+                  ) : ticket.status === "RAISED" ? (
+                    <span className="text-amber-400 text-sm">Waiting for assignment</span>
+                  ) : ticket.status === "ON_HOLD" || ticket.status === "AWAITING_ACCESS" ? (
+                    <span className="text-amber-400 text-sm">ETA paused: Awaiting room access or parts</span>
+                  ) : (
+                    <span className="text-slate-400 text-sm">Status: {ticket.status}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {ticket.etaP50At && (
+              <button
+                onClick={() => setShowWhyEstimate(!showWhyEstimate)}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition self-start sm:self-center"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>{showWhyEstimate ? "Hide Explanation" : "Why this estimate?"}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showWhyEstimate ? "rotate-180" : ""}`} />
+              </button>
+            )}
+          </div>
+
+          {/* Collapsible Why This Estimate Panel */}
+          {showWhyEstimate && etaData && (
+            <div className="mb-6 p-5 rounded-2xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 space-y-3.5 animate-in fade-in duration-200">
+              <div className="font-semibold text-white text-sm flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+                <span>Schedule & Duration Calculation</span>
+              </div>
+              <p className="leading-relaxed">
+                Based on <strong>{etaData.estimate?.n ?? 0} similar {ticket.category?.name} repairs</strong> in {etaData.estimate?.scope === "BLOCK" ? `Block ${ticket.block?.name}` : "hostel"} (typical {etaData.estimate?.observedMedian ?? etaData.estimate?.defaultDuration ?? 45} min of work).
+                {etaData.jobsAhead?.length > 0 ? (
+                  <span> <strong>{etaData.jobsAhead.length} jobs</strong> ahead of yours in queue.</span>
+                ) : (
+                  <span> Your ticket is next up in queue!</span>
+                )}
+                {etaData.shiftToday ? (
+                  <span> {etaData.assignee?.name || "Technician"}'s shift today ends at {etaData.shiftToday.endFormatted}.</span>
+                ) : (
+                  <span> Staff is on duty according to scheduled shift windows.</span>
+                )}
+              </p>
+
+              {etaData.jobsAhead?.length > 0 && (
+                <div>
+                  <div className="font-bold text-slate-400 uppercase text-[10px] tracking-wider mb-1.5">
+                    Jobs Scheduled Ahead (Anonymized)
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {etaData.jobsAhead.map((j: any, idx: number) => (
+                      <div key={idx} className="px-2.5 py-1 bg-slate-900 border border-slate-700/80 rounded-lg flex items-center space-x-2">
+                        <span className="font-mono text-slate-300 font-bold">{j.code}</span>
+                        <PriorityBadge priority={j.priority} />
+                        <span className="text-slate-500">~{j.estMinutes}m</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {etaData.history?.length > 0 && (
+                <div>
+                  <div className="font-bold text-slate-400 uppercase text-[10px] tracking-wider mb-1.5">
+                    Prediction History (Last 5 Updates)
+                  </div>
+                  <div className="space-y-1">
+                    {etaData.history.map((h: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-[11px] text-slate-400 py-0.5 border-b border-slate-700/40 last:border-0">
+                        <span>{formatFriendlyIst(h.createdAt)}</span>
+                        <span className="text-slate-300 font-medium">Predicted completion: {formatFriendlyIst(h.predictedP50At)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Details Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">

@@ -135,4 +135,17 @@ export class StaffService {
       jobs: plannedJobs,
     };
   }
+
+  static async listStaff() {
+    return prisma.user.findMany({
+      where: { role: Role.STAFF, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        trade: true,
+        blockId: true,
+      },
+      orderBy: { name: "asc" },
+    });
+  }
 }

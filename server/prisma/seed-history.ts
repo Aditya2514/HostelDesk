@@ -2,6 +2,7 @@ import { PrismaClient, Role, Trade, Priority, TicketStatus, LocationType, Resolu
 import { clock } from "../src/lib/clock";
 import { calculateBlendedEstimate } from "../src/modules/scheduling/estimator";
 import { EtaService } from "../src/modules/scheduling/eta.service";
+import { addWorkingMinutes, ShiftWindow } from "../src/modules/scheduling/shifts";
 
 const prisma = new PrismaClient();
 
@@ -24,7 +25,7 @@ function randomNormal(rng: () => number, mean = 0, std = 1): number {
   return mean + z0 * std;
 }
 
-function randomLogNormal(rng: () => number, targetMedian: number, sigma = 0.22): number {
+function randomLogNormal(rng: () => number, targetMedian: number, sigma = 0.10): number {
   const mu = Math.log(targetMedian);
   const val = Math.exp(randomNormal(rng, mu, sigma));
   return Math.max(5, Math.round(val));
@@ -61,9 +62,17 @@ async function main() {
   const blocks = await prisma.block.findMany();
   const rooms = await prisma.room.findMany();
   const categories = await prisma.category.findMany();
+  const staffShifts = await prisma.staffShift.findMany();
 
   if (students.length === 0 || allStaff.length === 0 || categories.length === 0) {
     throw new Error("Base database entities missing. Please run base seed first.");
+  }
+
+  const staffShiftMap = new Map<string, ShiftWindow[]>();
+  for (const s of staffShifts) {
+    const list = staffShiftMap.get(s.staffId) || [];
+    list.push({ weekday: s.weekday, startMinute: s.startMinute, endMinute: s.endMinute });
+    staffShiftMap.set(s.staffId, list);
   }
 
   // Define staff speed factors: one electrician noticeably slow (x1.4), one plumber fast (x0.8)
@@ -73,20 +82,25 @@ async function main() {
   const fastPlumberId = plumbers[0]?.id;
 
   const getStaffSpeedFactor = (staffId: string): number => {
-    if (staffId === slowElectricianId) return 1.4;
-    if (staffId === fastPlumberId) return 0.8;
+    if (staffId === slowElectricianId) return 1.25;
+    if (staffId === fastPlumberId) return 0.85;
     return 1.0;
   };
 
-  // True duration medians vs defaults (so estimator visibly learns from data)
+  // True duration medians vs defaults across all categories (so estimator visibly learns from data)
   const getTrueMedian = (catName: string, defaultMin: number): number => {
     const lower = catName.toLowerCase();
-    if (lower.includes("fan") || lower.includes("light") || lower.includes("socket")) return 70; // default 40
-    if (lower.includes("water cooler") || lower.includes("geyser")) return 75; // default 60
-    if (lower.includes("no power")) return 60; // default 45
-    if (lower.includes("wifi") || lower.includes("internet")) return 25; // default 30
-    if (lower.includes("drainage") || lower.includes("leak") || lower.includes("plumb")) return 55;
-    return defaultMin;
+    if (lower.includes("fan") || lower.includes("socket")) return 75; // default 40 -> gap 35
+    if (lower.includes("water cooler") || lower.includes("geyser")) return 95; // default 60 -> gap 35
+    if (lower.includes("no power")) return 75; // default 45 -> gap 30
+    if (lower.includes("no water") || lower.includes("major leak")) return 90; // default 60 -> gap 30
+    if (lower.includes("tap") || lower.includes("flush") || lower.includes("drain")) return 72; // default 45 -> gap 27
+    if (lower.includes("door lock")) return 55; // default 30 -> gap 25
+    if (lower.includes("furniture") || lower.includes("window")) return 90; // default 60 -> gap 30
+    if (lower.includes("wifi") || lower.includes("network")) return 15; // default 30 -> gap 15
+    if (lower.includes("cleaning")) return 55; // default 30 -> gap 25
+    if (lower.includes("pest")) return 90; // default 60 -> gap 30
+    return Math.round(defaultMin * 1.5);
   };
 
   const now = clock.now();
@@ -102,6 +116,7 @@ async function main() {
     categoryId: string;
     categoryName: string;
     defaultDurationMin: number;
+    slaMinutes: number;
     trueMedian: number;
     blockId: string;
     floor: number;
@@ -112,6 +127,10 @@ async function main() {
     title: string;
     description: string;
     createdAt: Date;
+    startedAt: Date;
+    resolvedAt: Date;
+    closedAt: Date;
+    dueAt: Date;
     actualWorkMinutes: number;
     resolutionMethod: ResolutionMethod;
     reopenCount: number;
@@ -126,15 +145,19 @@ async function main() {
     const dayRatio = i / completedTicketsCount; // 0.0 to 1.0 chronological
     const ticketDayMs = startHistoryTime.getTime() + dayRatio * (sixtyDaysMs - 2 * 60 * 60 * 1000);
 
-    // Pick hour during work shift (09:00 to 17:00 IST = 03:30 to 11:30 UTC)
-    const hourOffsetMinutes = Math.floor(rng() * 480); // 8 hours in minutes
-    const ticketCreatedMs = ticketDayMs + hourOffsetMinutes * 60 * 1000;
-    const createdAt = new Date(ticketCreatedMs);
-
-    // Pick random category
+    // Pick random category first to know SLA
     const cat = categories[Math.floor(rng() * categories.length)];
     const eligibleStaff = allStaff.filter((s) => s.trade === cat.trade);
     const staff = eligibleStaff[Math.floor(rng() * eligibleStaff.length)] || allStaff[0];
+    const shifts = staffShiftMap.get(staff.id) || [];
+
+    // Designated ~12.5% SLA breach target (exactly 25 out of 200 tickets)
+    const shouldBreach = (i % 8 === 3);
+
+    // Pick hour during work shift (09:00 to 17:00 IST = 03:30 to 11:30 UTC)
+    const hourOffsetMinutes = Math.floor(rng() * 420);
+    const ticketCreatedMs = ticketDayMs + hourOffsetMinutes * 60 * 1000;
+    let createdAt = new Date(ticketCreatedMs);
 
     // Pick student and location
     const student = students[Math.floor(rng() * students.length)];
@@ -142,11 +165,56 @@ async function main() {
     const room = rooms[Math.floor(rng() * rooms.length)];
     const block = blocks.find((b) => b.id === room.blockId) || blocks[0];
 
+    // Priority distribution: ~15% URGENT, ~70% NORMAL, ~15% LOW
+    const prioRand = rng();
+    const priority =
+      prioRand < 0.15 ? Priority.URGENT : (prioRand < 0.85 ? Priority.NORMAL : Priority.LOW);
+
     // True work duration calculation with log-normal noise and staff speed factor
     const trueMed = getTrueMedian(cat.name, cat.defaultDurationMin);
     const baseDuration = randomLogNormal(rng, trueMed);
     const speedFactor = getStaffSpeedFactor(staff.id);
     const actualWorkMinutes = Math.max(10, Math.round(baseDuration * speedFactor));
+
+    // Waiting time before startedAt, inside shift hours:
+    // urgent 10–90 min, normal 30 min–8 h (480 min), low 2–30 h (120–1800 min)
+    let waitMinutes: number;
+    if (priority === Priority.URGENT) {
+      waitMinutes = 10 + Math.floor(rng() * 81);
+    } else if (priority === Priority.NORMAL) {
+      waitMinutes = 30 + Math.floor(rng() * 451);
+    } else {
+      waitMinutes = 120 + Math.floor(rng() * 1681);
+    }
+
+    // Schedule inside shift hours
+    let startedAt = addWorkingMinutes(createdAt, waitMinutes, shifts) ||
+      new Date(createdAt.getTime() + waitMinutes * 60 * 1000);
+    let resolvedAt = addWorkingMinutes(startedAt, actualWorkMinutes, shifts) ||
+      new Date(startedAt.getTime() + actualWorkMinutes * 60 * 1000);
+
+    // Category's SLA: dueAt = createdAt + category SLA
+    let dueAt = new Date(createdAt.getTime() + cat.slaMinutes * 60 * 1000);
+
+    // Ensure target SLA breach distribution: ~12.5% breach dueAt
+    if (shouldBreach) {
+      if (resolvedAt.getTime() <= dueAt.getTime()) {
+        const extraDelayMs = (dueAt.getTime() - resolvedAt.getTime()) + (20 + Math.floor(rng() * 40)) * 60 * 1000;
+        resolvedAt = new Date(resolvedAt.getTime() + extraDelayMs);
+      }
+    } else {
+      if (resolvedAt.getTime() > dueAt.getTime()) {
+        // Ticket should not breach SLA: position createdAt earlier so work finishes within SLA
+        createdAt = new Date(startedAt.getTime() - Math.min(waitMinutes, 30) * 60 * 1000);
+        dueAt = new Date(createdAt.getTime() + cat.slaMinutes * 60 * 1000);
+        if (resolvedAt.getTime() > dueAt.getTime()) {
+          createdAt = new Date(resolvedAt.getTime() - Math.floor(cat.slaMinutes * 0.7) * 60 * 1000);
+          dueAt = new Date(createdAt.getTime() + cat.slaMinutes * 60 * 1000);
+        }
+      }
+    }
+
+    const closedAt = new Date(resolvedAt.getTime() + 30 * 60 * 1000);
 
     // Resolution method mix: ~75% CODE, ~20% PHOTO, ~5% WARDEN
     const methodRand = rng();
@@ -170,16 +238,21 @@ async function main() {
       categoryId: cat.id,
       categoryName: cat.name,
       defaultDurationMin: cat.defaultDurationMin,
+      slaMinutes: cat.slaMinutes,
       trueMedian: trueMed,
       blockId: block.id,
       floor: isRoom ? room.floor : (Math.floor(rng() * 4) + 1),
       roomId: isRoom ? room.id : null,
       locationType: isRoom ? LocationType.ROOM : LocationType.COMMON,
       commonSpot: isRoom ? null : "Floor Corridor / Washroom",
-      priority: rng() < 0.2 ? Priority.URGENT : Priority.NORMAL,
+      priority,
       title: `${cat.name} issue in ${isRoom ? `Room ${room.number}` : "common area"}`,
       description: `Reported issue with ${cat.name}. Needs inspection and fix.`,
       createdAt,
+      startedAt,
+      resolvedAt,
+      closedAt,
+      dueAt,
       actualWorkMinutes,
       resolutionMethod,
       reopenCount,
@@ -200,6 +273,7 @@ async function main() {
     actualWorkMinutes: number;
   }
   const historyRecords: PastRecord[] = [];
+  const allPredictionErrors: number[] = [];
 
   for (let idx = 0; idx < plannedTickets.length; idx++) {
     const t = plannedTickets[idx];
@@ -235,14 +309,12 @@ async function main() {
       scope,
     });
 
-    const predictedP50At = new Date(t.createdAt.getTime() + predictionEst.p50Minutes * 60 * 1000);
-    const predictedP80At = new Date(t.createdAt.getTime() + predictionEst.p80Minutes * 60 * 1000);
+    // Store each prediction as startedAt + estimate (i.e. measure work-time accuracy, which is what the estimator learns)
+    const predictedP50At = new Date(t.startedAt.getTime() + predictionEst.p50Minutes * 60 * 1000);
+    const predictedP80At = new Date(t.startedAt.getTime() + predictionEst.p80Minutes * 60 * 1000);
 
-    // Timestamps for lifecycle events
-    const startedAt = new Date(t.createdAt.getTime() + 60 * 60 * 1000); // 1 hour after creation
-    const resolvedAt = new Date(startedAt.getTime() + t.actualWorkMinutes * 60 * 1000);
-    const closedAt = new Date(resolvedAt.getTime() + 30 * 60 * 1000);
-    const dueAt = new Date(t.createdAt.getTime() + 48 * 60 * 60 * 1000);
+    const absError = Math.abs(predictionEst.p50Minutes - t.actualWorkMinutes);
+    allPredictionErrors.push(absError);
 
     // Insert ticket
     const createdTicket = await prisma.ticket.create({
@@ -266,15 +338,15 @@ async function main() {
         resolutionMethod: t.resolutionMethod,
         reopenCount: t.reopenCount,
         lockedVisitCount: t.lockedVisitCount,
-        startedAt,
-        resolvedAt,
-        closedAt,
-        dueAt,
+        startedAt: t.startedAt,
+        resolvedAt: t.resolvedAt,
+        closedAt: t.closedAt,
+        dueAt: t.dueAt,
         etaP50At: predictedP50At,
         etaP80At: predictedP80At,
         etaNotifiedP50At: predictedP50At,
         createdAt: t.createdAt,
-        updatedAt: closedAt,
+        updatedAt: t.closedAt,
       },
     });
 
@@ -315,7 +387,7 @@ async function main() {
           toStatus: TicketStatus.IN_PROGRESS,
           type: "STATUS_CHANGED",
           note: "Staff started work",
-          createdAt: startedAt,
+          createdAt: t.startedAt,
         },
         {
           ticketId: createdTicket.id,
@@ -324,7 +396,7 @@ async function main() {
           toStatus: TicketStatus.RESOLVED,
           type: "STATUS_CHANGED",
           note: `Resolved via ${t.resolutionMethod}`,
-          createdAt: resolvedAt,
+          createdAt: t.resolvedAt,
         },
         {
           ticketId: createdTicket.id,
@@ -333,7 +405,7 @@ async function main() {
           toStatus: TicketStatus.CLOSED,
           type: "STATUS_CHANGED",
           note: "Occupant confirmed fix",
-          createdAt: closedAt,
+          createdAt: t.closedAt,
         },
       ],
     });
@@ -362,7 +434,7 @@ async function main() {
     const createdOffsetMin = (j + 1) * 35;
     const ticketCreatedAt = new Date(now.getTime() - createdOffsetMin * 60 * 1000);
     const startedAt = isInProgress ? new Date(now.getTime() - 15 * 60 * 1000) : null;
-    const dueAt = new Date(ticketCreatedAt.getTime() + 48 * 60 * 60 * 1000);
+    const dueAt = new Date(ticketCreatedAt.getTime() + cat.slaMinutes * 60 * 1000);
 
     const openCode = `HD-SYN-OPEN-${String(j + 1).padStart(2, "0")}`;
 
@@ -419,9 +491,21 @@ async function main() {
   }
 
   const finalTotal = await prisma.ticket.count({ where: { isSynthetic: true } });
+  const first50Errors = allPredictionErrors.slice(0, 50);
+  const last50Errors = allPredictionErrors.slice(150, 200);
+  const avgFirst50Error = first50Errors.reduce((a, b) => a + b, 0) / first50Errors.length;
+  const avgLast50Error = last50Errors.reduce((a, b) => a + b, 0) / last50Errors.length;
+
+  const breachedTickets = plannedTickets.filter((t) => t.resolvedAt.getTime() > t.dueAt.getTime()).length;
+  const breachRatePercent = ((breachedTickets / plannedTickets.length) * 100).toFixed(1);
+
   console.log(`\n=============================================================`);
   console.log(`🎉 Synthetic History Generation Complete!`);
-  console.log(`Total Synthetic Tickets: ${finalTotal} (200 completed + 12 open)`);
+  console.log(`Total Synthetic Tickets: ${finalTotal} (200 completed + ${openCount} open)`);
+  console.log(`SLA Breaches: ${breachedTickets} / ${plannedTickets.length} (${breachRatePercent}%) [Target: 10–15%]`);
+  console.log(`Average Absolute Prediction Error (First 50 tickets): ${avgFirst50Error.toFixed(2)} minutes`);
+  console.log(`Average Absolute Prediction Error (Last 50 tickets):  ${avgLast50Error.toFixed(2)} minutes`);
+  console.log(`Model Learning Verification: ${avgLast50Error < avgFirst50Error ? "PASSED (Last 50 error is lower)" : "FAILED"}`);
   console.log(`=============================================================\n`);
 }
 

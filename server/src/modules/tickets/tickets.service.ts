@@ -1191,6 +1191,14 @@ export class TicketsService {
 
     let jobsAhead: Array<{ code: string; priority: Priority; estMinutes: number }> = [];
     let shiftToday: {
+      windows: Array<{
+        startMinute: number;
+        endMinute: number;
+        startFormatted: string;
+        endFormatted: string;
+        formatted: string;
+      }>;
+      summary: string;
       startMinute: number;
       endMinute: number;
       startFormatted: string;
@@ -1203,8 +1211,11 @@ export class TicketsService {
       const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
       const currentWeekday = istDate.getUTCDay();
 
-      const todayShift = staff.shifts.find((s) => s.weekday === currentWeekday);
-      if (todayShift) {
+      const todayShifts = staff.shifts
+        .filter((s) => s.weekday === currentWeekday)
+        .sort((a, b) => a.startMinute - b.startMinute);
+
+      if (todayShifts.length > 0) {
         const formatMin = (m: number) => {
           const h = Math.floor(m / 60);
           const min = m % 60;
@@ -1212,11 +1223,28 @@ export class TicketsService {
           const dh = h % 12 || 12;
           return `${dh}:${String(min).padStart(2, "0")} ${ampm}`;
         };
+
+        const windows = todayShifts.map((s) => ({
+          startMinute: s.startMinute,
+          endMinute: s.endMinute,
+          startFormatted: formatMin(s.startMinute),
+          endFormatted: formatMin(s.endMinute),
+          formatted: `${formatMin(s.startMinute)}–${formatMin(s.endMinute)}`,
+        }));
+
+        const windowStrings = windows.map((w) => w.formatted);
+        const windowsText =
+          windowStrings.length === 1
+            ? windowStrings[0]
+            : windowStrings.slice(0, -1).join(", ") + " and " + windowStrings[windowStrings.length - 1];
+
         shiftToday = {
-          startMinute: todayShift.startMinute,
-          endMinute: todayShift.endMinute,
-          startFormatted: formatMin(todayShift.startMinute),
-          endFormatted: formatMin(todayShift.endMinute),
+          windows,
+          summary: `works ${windowsText} today`,
+          startMinute: windows[0].startMinute,
+          endMinute: windows[windows.length - 1].endMinute,
+          startFormatted: windows[0].startFormatted,
+          endFormatted: windows[windows.length - 1].endFormatted,
         };
       }
 

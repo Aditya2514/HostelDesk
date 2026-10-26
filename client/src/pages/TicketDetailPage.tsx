@@ -334,7 +334,7 @@ export const TicketDetailPage: React.FC = () => {
                   <span> Your ticket is next up in queue!</span>
                 )}
                 {etaData.shiftToday ? (
-                  <span> {etaData.assignee?.name || "Technician"}'s shift today ends at {etaData.shiftToday.endFormatted}.</span>
+                  <span> {etaData.assignee?.name || "Technician"} {etaData.shiftToday.summary || `shift today ends at ${etaData.shiftToday.endFormatted}`}.</span>
                 ) : (
                   <span> Staff is on duty according to scheduled shift windows.</span>
                 )}

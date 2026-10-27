@@ -17,6 +17,25 @@ import {
 } from "lucide-react";
 import { formatFriendlyIst } from "../lib/formatTime";
 
+const FINISHED_STATUSES = ["CLOSED", "REJECTED"];
+
+function formatMinute(min: number): string {
+  const h24 = Math.floor(min / 60);
+  const m = min % 60;
+  const suffix = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+/** Today's shift windows (IST weekday), e.g. "9:00 AM – 1:00 PM · 2:00 PM – 6:00 PM". */
+function describeTodayShift(shifts: { weekday: number; startMinute: number; endMinute: number }[]): string {
+  const weekdayName = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date());
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekdayName);
+  const today = shifts.filter((sh) => sh.weekday === weekday).sort((a, b) => a.startMinute - b.startMinute);
+  if (today.length === 0) return "Off today";
+  return today.map((sh) => `${formatMinute(sh.startMinute)} – ${formatMinute(sh.endMinute)}`).join(" · ");
+}
+
 export const StaffDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -29,7 +48,10 @@ export const StaffDashboard: React.FC = () => {
     queryFn: () => api.get<{ tickets: any[] }>("/api/tickets?limit=50"),
   });
 
-  const tickets = ticketsData?.tickets ?? [];
+  const allTickets = ticketsData?.tickets ?? [];
+  // Closed/rejected jobs are history, not work: keep them out of the queue count and the main list.
+  const tickets = allTickets.filter((t) => !FINISHED_STATUSES.includes(t.status));
+  const finishedTickets = allTickets.filter((t) => FINISHED_STATUSES.includes(t.status));
 
   // Fetch planned schedule ("My day")
   const { data: scheduleData, isLoading: isScheduleLoading } = useQuery({
@@ -71,14 +93,17 @@ export const StaffDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm mt-1 flex items-center space-x-2">
                 <Wrench className="w-4 h-4 text-amber-400" />
                 <span>
-                  Trade: <strong className="text-amber-300">{user?.trade}</strong> · Queue: {tickets.length} Tasks
+                  Trade: <strong className="text-amber-300">{user?.trade}</strong> · {tickets.length} active {tickets.length === 1 ? "task" : "tasks"}
+                  {finishedTickets.length > 0 ? ` · ${finishedTickets.length} completed` : ""}
                 </span>
               </p>
             </div>
 
             <div className="flex items-center space-x-2 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700/60 text-xs">
               <Clock className="w-4 h-4 text-emerald-400" />
-              <span className="text-slate-300 font-medium">Standard Shift (9:00 – 18:00)</span>
+              <span className="text-slate-300 font-medium">
+                {scheduleData ? `Today: ${describeTodayShift(scheduleData.shifts)}` : "Loading shift…"}
+              </span>
             </div>
           </div>
         </div>
@@ -168,7 +193,7 @@ export const StaffDashboard: React.FC = () => {
 
         {/* Assigned Job Queue */}
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">All Assigned Tasks</h2>
+          <h2 className="text-base font-bold text-white">Active Tasks</h2>
           <span className="text-xs text-slate-400">Manage work status and view room details</span>
         </div>
 
@@ -181,7 +206,7 @@ export const StaffDashboard: React.FC = () => {
             <CheckCircle2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
             <h3 className="text-base font-bold text-white mb-1">Queue is Clear!</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              You have no pending jobs assigned to your queue at this moment. New issues in {user?.trade} will automatically appear here.
+              You have no active jobs at this moment. New issues in {user?.trade} will automatically appear here.
             </p>
           </div>
         ) : (
@@ -254,6 +279,33 @@ export const StaffDashboard: React.FC = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {finishedTickets.length > 0 && (
+          <details className="mt-8 group">
+            <summary className="cursor-pointer select-none text-sm font-semibold text-slate-400 hover:text-slate-200 transition list-none flex items-center space-x-2">
+              <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+              <span>Completed ({finishedTickets.length})</span>
+            </summary>
+            <div className="mt-3 space-y-2">
+              {finishedTickets.map((ticket) => (
+                <div
+                  key={ticket.id}
+                  onClick={() => navigate(`/tickets/${ticket.id}`)}
+                  className="cursor-pointer bg-slate-900/50 border border-slate-800 hover:border-slate-700 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 transition"
+                >
+                  <span className="font-mono font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{ticket.code}</span>
+                  <StatusBadge status={ticket.status} />
+                  <span className="text-slate-300 font-medium">{ticket.title}</span>
+                  <span className="ml-auto">
+                    {ticket.locationType === "ROOM"
+                      ? `${ticket.block?.name}-${ticket.room?.number}`
+                      : `Floor ${ticket.floor} (${ticket.commonSpot})`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
         )}
       </main>
     </div>

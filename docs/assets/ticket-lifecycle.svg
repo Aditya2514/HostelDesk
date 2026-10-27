@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="660" viewBox="0 0 1300 660" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Ticket lifecycle</title><desc id="d">State machine: raised, assigned, in progress, awaiting access, on hold, resolved, awaiting verification, closed, reopened, rejected.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#070b17"/></linearGradient>
+<marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M1,1 L10,6 L1,11 z" fill="#94a3b8"/></marker>
+<filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+</defs>
+<rect width="1300" height="660" rx="22" fill="url(#bg)"/>
+<rect x="1" y="1" width="1298" height="658" rx="21" fill="none" stroke="#1e293b" stroke-width="2"/>
+<text x="650.0" y="58" text-anchor="middle" font-size="31" font-weight="800" fill="#f8fafc">Ticket lifecycle</text>
+<text x="650.0" y="88" text-anchor="middle" font-size="16.5" fill="#94a3b8">Every transition is a row in one tested table. Anything not in it is refused with a 409.</text>
+<rect x="750" y="170" width="260" height="262" rx="16" fill="#0a1022" stroke="#475569" stroke-dasharray="6 6" stroke-width="1.5"/>
+<text x="768" y="196" font-size="12" font-weight="800" fill="#64748b" text-anchor="start" letter-spacing="1.2">WAITING FOR THE STUDENT (48 H)</text>
+<rect x="770" y="214" width="220" height="48" rx="12" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+<text x="880.0" y="243.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">RESOLVED</text>
+<rect x="770" y="372" width="220" height="48" rx="12" fill="#431407" stroke="#fb923c" stroke-width="2"/>
+<text x="880.0" y="400.86" font-size="13.5" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">AWAITING_VERIFICATION</text>
+<text x="880" y="292" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="middle">room tickets: code entered</text>
+<text x="880" y="312" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="middle">common areas: after-photo</text>
+<rect x="40" y="290" width="120" height="48" rx="12" fill="#1e1b4b" stroke="#818cf8" stroke-width="2"/>
+<text x="100.0" y="319.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">RAISED</text>
+<rect x="280" y="290" width="140" height="48" rx="12" fill="#1e1b4b" stroke="#818cf8" stroke-width="2"/>
+<text x="350.0" y="319.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">ASSIGNED</text>
+<rect x="540" y="290" width="150" height="48" rx="12" fill="#451a03" stroke="#fbbf24" stroke-width="2"/>
+<text x="615.0" y="319.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">IN_PROGRESS</text>
+<rect x="380" y="440" width="130" height="48" rx="12" fill="#431407" stroke="#fb923c" stroke-width="2"/>
+<text x="445.0" y="469.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">ON_HOLD</text>
+<rect x="430" y="110" width="190" height="48" rx="12" fill="#431407" stroke="#fb923c" stroke-width="2"/>
+<text x="525.0" y="139.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">AWAITING_ACCESS</text>
+<rect x="1120" y="290" width="120" height="48" rx="12" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+<text x="1180.0" y="319.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">CLOSED</text>
+<rect x="830" y="520" width="150" height="48" rx="12" fill="#4c0519" stroke="#fb7185" stroke-width="2"/>
+<text x="905.0" y="549.04" font-size="14" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="0.4">REOPENED</text>
+<rect x="40" y="170" width="104" height="36" rx="18.0" fill="#0f172a" stroke="#94a3b8" stroke-opacity="0.8" stroke-width="1.5"/>
+<text x="92.0" y="192.55" font-size="13" font-weight="700" fill="#94a3b8" text-anchor="middle">NEW TICKET</text>
+<path d="M92,206 L92,290" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="23.099999999999994" y="236" width="137.8" height="21" rx="6" fill="#0a1022"/>
+<text x="92" y="251" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">no eligible staff</text>
+<path d="M144,188 L350,188 L350,290" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="162.6" y="166" width="174.8" height="21" rx="6" fill="#0a1022"/>
+<text x="250" y="181" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">routed to a technician</text>
+<path d="M160,314 L280,314" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="162.2" y="291" width="115.60000000000001" height="21" rx="6" fill="#0a1022"/>
+<text x="220" y="306" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">warden assigns</text>
+<path d="M420,314 L540,314" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="437.0" y="291" width="86.0" height="21" rx="6" fill="#0a1022"/>
+<text x="480" y="306" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">start work</text>
+<path d="M330,290 L330,134 L430,134" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="333.3" y="112" width="93.4" height="21" rx="6" fill="#0a1022"/>
+<text x="380" y="127" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">room locked</text>
+<path d="M470,158 L470,215 L390,215 L390,290" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="346.3" y="193" width="167.4" height="21" rx="6" fill="#0a1022"/>
+<text x="430" y="208" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">occupant picks a time</text>
+<path d="M600,290 L600,158" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="608.3" y="218" width="93.4" height="21" rx="6" fill="#0a1022"/>
+<text x="655" y="233" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">room locked</text>
+<path d="M620,134 L1180,134 L1180,290" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="834.8" y="112" width="130.4" height="21" rx="6" fill="#0a1022"/>
+<text x="900" y="127" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">no reply in 48 h</text>
+<path d="M565,338 L565,452 L510,452" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="484.6" y="384" width="100.80000000000001" height="21" rx="6" fill="#0a1022"/>
+<text x="535" y="399" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">needs a part</text>
+<path d="M510,476 L615,476 L615,338" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="626.8" y="384" width="56.400000000000006" height="21" rx="6" fill="#0a1022"/>
+<text x="655" y="399" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">resume</text>
+<path d="M690,304 L730,304 L730,238 L770,238" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="679.6" y="254" width="100.80000000000001" height="21" rx="6" fill="#0a1022"/>
+<text x="730" y="269" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">correct code</text>
+<path d="M690,328 L730,328 L730,396 L770,396" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="683.3" y="348" width="93.4" height="21" rx="6" fill="#0a1022"/>
+<text x="730" y="363" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">after-photo</text>
+<path d="M1010,314 L1120,314" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="999.8" y="290" width="130.4" height="21" rx="6" fill="#0a1022"/>
+<text x="1065" y="305" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">confirmed / 48 h</text>
+<path d="M900,432 L900,520" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="908.1" y="464" width="63.800000000000004" height="21" rx="6" fill="#0a1022"/>
+<text x="940" y="479" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">dispute</text>
+<path d="M1180,338 L1180,544 L980,544" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="1013.7" y="521" width="152.6" height="21" rx="6" fill="#0a1022"/>
+<text x="1090" y="536" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">dispute within 48 h</text>
+<path d="M830,544 L350,544 L350,338" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="550.7" y="521" width="78.60000000000001" height="21" rx="6" fill="#0a1022"/>
+<text x="590" y="536" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">re-routed</text>
+<path d="M670,338 L670,600 L1210,600 L1210,326 L1240,326" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="6 6" marker-end="url(#arr)"/>
+<rect x="826.7" y="578" width="226.60000000000002" height="21" rx="6" fill="#0a1022"/>
+<text x="940" y="593" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">warden upholds a code refusal</text>
+<path d="M1240,300 L1268,300" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<circle cx="1276" cy="300" r="7" fill="#34d399"/>
+<rect x="40" y="596" width="112" height="32" rx="16.0" fill="#4c0519" stroke="#fb7185" stroke-opacity="0.8" stroke-width="1.5"/>
+<text x="96.0" y="616.55" font-size="13" font-weight="700" fill="#fb7185" text-anchor="middle">REJECTED</text>
+<text x="166" y="617" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">A warden can reject any open ticket (reason required). It ends there.</text>
+<rect x="840" y="22" width="14" height="14" rx="4" fill="#1e1b4b" stroke="#818cf8" stroke-width="2"/>
+<text x="860" y="34" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="start">open</text>
+<rect x="924" y="22" width="14" height="14" rx="4" fill="#451a03" stroke="#fbbf24" stroke-width="2"/>
+<text x="944" y="34" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="start">working</text>
+<rect x="1008" y="22" width="14" height="14" rx="4" fill="#431407" stroke="#fb923c" stroke-width="2"/>
+<text x="1028" y="34" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="start">waiting</text>
+<rect x="1092" y="22" width="14" height="14" rx="4" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+<text x="1112" y="34" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="start">done</text>
+<rect x="1176" y="22" width="14" height="14" rx="4" fill="#4c0519" stroke="#fb7185" stroke-width="2"/>
+<text x="1196" y="34" font-size="12.5" font-weight="400" fill="#94a3b8" text-anchor="start">problem</text>
+</svg>

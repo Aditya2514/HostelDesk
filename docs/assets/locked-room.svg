@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="930" viewBox="0 0 1200 930" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Locked-room flow</title><desc id="d">Technician finds the door locked, the clock pauses, the occupant chooses, and the ticket resumes, escalates or closes.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#070b17"/></linearGradient>
+<marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M1,1 L10,6 L1,11 z" fill="#94a3b8"/></marker>
+<filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+</defs>
+<rect width="1200" height="930" rx="22" fill="url(#bg)"/>
+<rect x="1" y="1" width="1198" height="928" rx="21" fill="none" stroke="#1e293b" stroke-width="2"/>
+<text x="600.0" y="58" text-anchor="middle" font-size="31" font-weight="800" fill="#f8fafc">When the room is locked</text>
+<text x="600.0" y="88" text-anchor="middle" font-size="16.5" fill="#94a3b8">No entry without the student. The clock stops, and false claims are checked.</text>
+<g filter="url(#sh)"><rect x="40" y="120" width="265" height="150" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="40" y="134" width="5" height="122" rx="2.5" fill="#fbbf24"/>
+<circle cx="78" cy="154" r="17" fill="#451a03" stroke="#fbbf24" stroke-width="2.2"/>
+<text x="78" y="160" font-size="17" font-weight="800" fill="#fbbf24" text-anchor="middle">1</text>
+<text x="108" y="155" font-size="15.5" font-weight="800" fill="#f8fafc" text-anchor="start">Door is locked</text>
+<text x="108" y="186" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">The technician arrives</text>
+<text x="108" y="207.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">and nobody answers.</text>
+<path d="M305,190 L325,190" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="325" y="120" width="265" height="150" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="325" y="134" width="5" height="122" rx="2.5" fill="#fbbf24"/>
+<circle cx="363" cy="154" r="17" fill="#451a03" stroke="#fbbf24" stroke-width="2.2"/>
+<text x="363" y="160" font-size="17" font-weight="800" fill="#fbbf24" text-anchor="middle">2</text>
+<text x="393" y="155" font-size="15.5" font-weight="800" fill="#f8fafc" text-anchor="start">Door photo</text>
+<text x="393" y="186" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Required. The server</text>
+<text x="393" y="207.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">stamps the time.</text>
+<path d="M590,190 L610,190" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="610" y="120" width="265" height="150" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="610" y="134" width="5" height="122" rx="2.5" fill="#fbbf24"/>
+<circle cx="648" cy="154" r="17" fill="#451a03" stroke="#fbbf24" stroke-width="2.2"/>
+<text x="648" y="160" font-size="17" font-weight="800" fill="#fbbf24" text-anchor="middle">3</text>
+<text x="678" y="155" font-size="15.5" font-weight="800" fill="#f8fafc" text-anchor="start">Clock pauses</text>
+<text x="678" y="186" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">AWAITING_ACCESS: the</text>
+<text x="678" y="207.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">SLA deadline stops</text>
+<text x="678" y="229.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">running.</text>
+<path d="M875,190 L895,190" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="895" y="120" width="265" height="150" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="895" y="134" width="5" height="122" rx="2.5" fill="#fbbf24"/>
+<circle cx="933" cy="154" r="17" fill="#451a03" stroke="#fbbf24" stroke-width="2.2"/>
+<text x="933" y="160" font-size="17" font-weight="800" fill="#fbbf24" text-anchor="middle">4</text>
+<text x="963" y="155" font-size="15.5" font-weight="800" fill="#f8fafc" text-anchor="start">Occupants notified</text>
+<text x="963" y="186" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Every current roommate</text>
+<text x="963" y="207.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">is told and asked to</text>
+<text x="963" y="229.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">respond.</text>
+<text x="44" y="292" font-size="13" font-weight="800" fill="#64748b" text-anchor="start" letter-spacing="2.2">THE OCCUPANT CHOOSES</text>
+<path d="M1027.5,270 L1027.5,306 L172.5,306" fill="none" stroke="#94a3b8" stroke-width="2.3"/>
+<g filter="url(#sh)"><rect x="40" y="346" width="265" height="170" rx="14" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="40" y="360" width="5" height="142" rx="2.5" fill="#34d399"/>
+<text x="64" y="376" font-size="15.5" font-weight="800" fill="#34d399" text-anchor="start" letter-spacing="0.6">'I'll be there in 15 min'</text>
+<text x="64" y="406" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">The technician moves to the</text>
+<text x="64" y="427.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">top of the queue and</text>
+<text x="64" y="449.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">returns once you reach your</text>
+<text x="64" y="470.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">room.</text>
+<path d="M172.5,306 L172.5,346" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="325" y="346" width="265" height="170" rx="14" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="325" y="360" width="5" height="142" rx="2.5" fill="#34d399"/>
+<text x="349" y="376" font-size="15.5" font-weight="800" fill="#34d399" text-anchor="start" letter-spacing="0.6">Pick a 30-minute slot</text>
+<text x="349" y="406" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Choose a window in the next</text>
+<text x="349" y="427.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">3 days. The technician is</text>
+<text x="349" y="449.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">booked and won't come</text>
+<text x="349" y="470.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">earlier.</text>
+<path d="M457.5,306 L457.5,346" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="610" y="346" width="265" height="170" rx="14" fill="#0d1428" stroke="#c084fc" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="610" y="360" width="5" height="142" rx="2.5" fill="#c084fc"/>
+<text x="634" y="376" font-size="15.5" font-weight="800" fill="#c084fc" text-anchor="start" letter-spacing="0.6">'I was in my room'</text>
+<text x="634" y="406" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Report a false locked</text>
+<text x="634" y="427.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">claim. The warden decides</text>
+<text x="634" y="449.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">from the photo, timestamps</text>
+<text x="634" y="470.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">and timeline.</text>
+<path d="M742.5,306 L742.5,346" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="895" y="346" width="265" height="170" rx="14" fill="#0d1428" stroke="#fb7185" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="895" y="360" width="5" height="142" rx="2.5" fill="#fb7185"/>
+<text x="919" y="376" font-size="15.5" font-weight="800" fill="#fb7185" text-anchor="start" letter-spacing="0.6">No reply for 48 hours</text>
+<text x="919" y="406" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">The ticket closes as unable</text>
+<text x="919" y="427.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">to access.</text>
+<path d="M1027.5,306 L1027.5,346" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="40" y="566" width="550" height="130" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="40" y="580" width="5" height="102" rx="2.5" fill="#818cf8"/>
+<text x="64" y="596" font-size="15.5" font-weight="800" fill="#818cf8" text-anchor="start" letter-spacing="0.6">Technician returns and the clock resumes</text>
+<text x="64" y="626" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Work continues from where it stopped. Time spent waiting does</text>
+<text x="64" y="647.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">not count against the deadline.</text>
+<path d="M172.5,516 L172.5,566" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<path d="M457.5,516 L457.5,566" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="610" y="566" width="265" height="170" rx="14" fill="#0d1428" stroke="#c084fc" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="610" y="580" width="5" height="142" rx="2.5" fill="#c084fc"/>
+<text x="634" y="596" font-size="15.5" font-weight="800" fill="#c084fc" text-anchor="start" letter-spacing="0.6">Warden decides</text>
+<text x="634" y="626" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Upheld: the room was open,</text>
+<text x="634" y="647.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">so the ticket re-queues</text>
+<text x="634" y="669.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">with a priority boost.</text>
+<text x="634" y="690.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Rejected: no change.</text>
+<path d="M742.5,516 L742.5,566" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="895" y="566" width="265" height="130" rx="14" fill="#0d1428" stroke="#fb7185" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="895" y="580" width="5" height="102" rx="2.5" fill="#fb7185"/>
+<text x="919" y="596" font-size="15.5" font-weight="800" fill="#fb7185" text-anchor="start" letter-spacing="0.6">CLOSED: unable to access</text>
+<text x="919" y="626" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Needs a new complaint if</text>
+<text x="919" y="647.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">the problem is still there.</text>
+<path d="M1027.5,516 L1027.5,566" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<g filter="url(#sh)"><rect x="40" y="770" width="265" height="120" rx="14" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="40" y="784" width="5" height="92" rx="2.5" fill="#34d399"/>
+<text x="64" y="800" font-size="15.5" font-weight="800" fill="#34d399" text-anchor="start" letter-spacing="0.6">Door opens: fix and prove</text>
+<text x="64" y="830" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Work, after-photo,</text>
+<text x="64" y="851.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">completion code, resolved.</text>
+<path d="M172.5,696 L172.5,770" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="183.5" y="710" width="86.0" height="21" rx="6" fill="#0a1022"/>
+<text x="226.5" y="725" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">door opens</text>
+<g filter="url(#sh)"><rect x="325" y="770" width="265" height="120" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<rect x="325" y="784" width="5" height="92" rx="2.5" fill="#fbbf24"/>
+<text x="349" y="800" font-size="15.5" font-weight="800" fill="#fbbf24" text-anchor="start" letter-spacing="0.6">Locked again?</text>
+<text x="349" y="830" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">The second locked visit</text>
+<text x="349" y="851.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">requires a booked slot; no</text>
+<text x="349" y="873.0" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">15-minute option.</text>
+<path d="M457.5,696 L457.5,770" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<rect x="465.1" y="710" width="100.80000000000001" height="21" rx="6" fill="#0a1022"/>
+<text x="515.5" y="725" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">locked again</text>
+</svg>

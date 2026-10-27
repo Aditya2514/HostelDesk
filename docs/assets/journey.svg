@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1128" viewBox="0 0 1200 1128" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">One complaint, end to end</title><desc id="d">Five stages: raise, route and predict, fix, prove, confirm, ending in a closed ticket with a full record, plus four safety nets.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#070b17"/></linearGradient>
+<marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M1,1 L10,6 L1,11 z" fill="#94a3b8"/></marker>
+<filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+</defs>
+<rect width="1200" height="1128" rx="22" fill="url(#bg)"/>
+<rect x="1" y="1" width="1198" height="1126" rx="21" fill="none" stroke="#1e293b" stroke-width="2"/>
+<text x="600.0" y="58" text-anchor="middle" font-size="31" font-weight="800" fill="#f8fafc">One complaint, end to end</text>
+<text x="600.0" y="88" text-anchor="middle" font-size="16.5" fill="#94a3b8">Every step leaves evidence, and every promise is checked against reality</text>
+<g filter="url(#sh)"><rect x="40" y="124" width="350" height="352" rx="16" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<path d="M40,140 a16,16 0 0 1 16,-16 h318 a16,16 0 0 1 16,16 v6 h-350 z" fill="#34d399"/>
+<circle cx="80" cy="194" r="23" fill="#064e3b" stroke="#34d399" stroke-width="2.5"/>
+<text x="80" y="202" font-size="23" font-weight="800" fill="#34d399" text-anchor="middle">1</text>
+<text x="116" y="190" font-size="19" font-weight="800" fill="#f8fafc" text-anchor="start" letter-spacing="0.5">RAISE</text>
+<text x="116" y="212" font-size="13.5" font-weight="600" fill="#34d399" text-anchor="start">Student</text>
+<line x1="62" y1="240" x2="368" y2="240" stroke="#1e293b" stroke-width="1.5"/>
+<circle cx="70" cy="271" r="4.5" fill="#34d399"/>
+<text x="86" y="276" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Report a room or common-area</text>
+<text x="86" y="298" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">issue in seconds</text>
+<circle cx="70" cy="333" r="4.5" fill="#34d399"/>
+<text x="86" y="338" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Priority comes from the category,</text>
+<text x="86" y="360" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">not the student</text>
+<circle cx="70" cy="395" r="4.5" fill="#34d399"/>
+<text x="86" y="400" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Same-room duplicates blocked;</text>
+<text x="86" y="422" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">common-area reports can be joined</text>
+<g filter="url(#sh)"><rect x="425" y="124" width="350" height="352" rx="16" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<path d="M425,140 a16,16 0 0 1 16,-16 h318 a16,16 0 0 1 16,16 v6 h-350 z" fill="#818cf8"/>
+<circle cx="465" cy="194" r="23" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.5"/>
+<text x="465" y="202" font-size="23" font-weight="800" fill="#818cf8" text-anchor="middle">2</text>
+<text x="501" y="190" font-size="19" font-weight="800" fill="#f8fafc" text-anchor="start" letter-spacing="0.5">ROUTE + PREDICT</text>
+<text x="501" y="212" font-size="13.5" font-weight="600" fill="#818cf8" text-anchor="start">HostelDesk</text>
+<line x1="447" y1="240" x2="753" y2="240" stroke="#1e293b" stroke-width="1.5"/>
+<circle cx="455" cy="271" r="4.5" fill="#818cf8"/>
+<text x="471" y="276" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Simulates every eligible</text>
+<text x="471" y="298" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">technician's real shifts and</text>
+<text x="471" y="320" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">queue</text>
+<circle cx="455" cy="355" r="4.5" fill="#818cf8"/>
+<text x="471" y="360" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Routes to whoever finishes</text>
+<text x="471" y="382" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">earliest</text>
+<circle cx="455" cy="417" r="4.5" fill="#818cf8"/>
+<text x="471" y="422" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Student sees a range plus a</text>
+<text x="471" y="444" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">plain-language reason</text>
+<g filter="url(#sh)"><rect x="810" y="124" width="350" height="352" rx="16" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<path d="M810,140 a16,16 0 0 1 16,-16 h318 a16,16 0 0 1 16,16 v6 h-350 z" fill="#fbbf24"/>
+<circle cx="850" cy="194" r="23" fill="#451a03" stroke="#fbbf24" stroke-width="2.5"/>
+<text x="850" y="202" font-size="23" font-weight="800" fill="#fbbf24" text-anchor="middle">3</text>
+<text x="886" y="190" font-size="19" font-weight="800" fill="#f8fafc" text-anchor="start" letter-spacing="0.5">FIX</text>
+<text x="886" y="212" font-size="13.5" font-weight="600" fill="#fbbf24" text-anchor="start">Technician</text>
+<line x1="832" y1="240" x2="1138" y2="240" stroke="#1e293b" stroke-width="1.5"/>
+<circle cx="840" cy="271" r="4.5" fill="#fbbf24"/>
+<text x="856" y="276" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Planned day with a start and</text>
+<text x="856" y="298" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">finish time for each job</text>
+<circle cx="840" cy="333" r="4.5" fill="#fbbf24"/>
+<text x="856" y="338" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Start work: a 4-digit code</text>
+<text x="856" y="360" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">appears for the room's occupants</text>
+<circle cx="840" cy="395" r="4.5" fill="#fbbf24"/>
+<text x="856" y="400" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Door locked? Photo it and the</text>
+<text x="856" y="422" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">clock pauses</text>
+<g filter="url(#sh)"><rect x="810" y="526" width="350" height="352" rx="16" fill="#0d1428" stroke="#fb923c" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<path d="M810,542 a16,16 0 0 1 16,-16 h318 a16,16 0 0 1 16,16 v6 h-350 z" fill="#fb923c"/>
+<circle cx="850" cy="596" r="23" fill="#431407" stroke="#fb923c" stroke-width="2.5"/>
+<text x="850" y="604" font-size="23" font-weight="800" fill="#fb923c" text-anchor="middle">4</text>
+<text x="886" y="592" font-size="19" font-weight="800" fill="#f8fafc" text-anchor="start" letter-spacing="0.5">PROVE</text>
+<text x="886" y="614" font-size="13.5" font-weight="600" fill="#fb923c" text-anchor="start">Technician + Student</text>
+<line x1="832" y1="642" x2="1138" y2="642" stroke="#1e293b" stroke-width="1.5"/>
+<circle cx="840" cy="673" r="4.5" fill="#fb923c"/>
+<text x="856" y="678" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">After-photo, timestamped by the</text>
+<text x="856" y="700" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">server</text>
+<circle cx="840" cy="735" r="4.5" fill="#fb923c"/>
+<text x="856" y="740" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Occupant shares the code once</text>
+<text x="856" y="762" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">satisfied</text>
+<circle cx="840" cy="797" r="4.5" fill="#fb923c"/>
+<text x="856" y="802" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">5 wrong tries lock the ticket for</text>
+<text x="856" y="824" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">15 minutes</text>
+<g filter="url(#sh)"><rect x="425" y="526" width="350" height="352" rx="16" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<path d="M425,542 a16,16 0 0 1 16,-16 h318 a16,16 0 0 1 16,16 v6 h-350 z" fill="#34d399"/>
+<circle cx="465" cy="596" r="23" fill="#064e3b" stroke="#34d399" stroke-width="2.5"/>
+<text x="465" y="604" font-size="23" font-weight="800" fill="#34d399" text-anchor="middle">5</text>
+<text x="501" y="592" font-size="19" font-weight="800" fill="#f8fafc" text-anchor="start" letter-spacing="0.5">CONFIRM</text>
+<text x="501" y="614" font-size="13.5" font-weight="600" fill="#34d399" text-anchor="start">Student</text>
+<line x1="447" y1="642" x2="753" y2="642" stroke="#1e293b" stroke-width="1.5"/>
+<circle cx="455" cy="673" r="4.5" fill="#34d399"/>
+<text x="471" y="678" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Confirm, or report a problem</text>
+<text x="471" y="700" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">within 48 hours</text>
+<circle cx="455" cy="735" r="4.5" fill="#34d399"/>
+<text x="471" y="740" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">A dispute always wins</text>
+<circle cx="455" cy="775" r="4.5" fill="#34d399"/>
+<text x="471" y="780" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">No response: auto-closes at 48</text>
+<text x="471" y="802" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">hours</text>
+<g filter="url(#sh)"><rect x="40" y="526" width="350" height="352" rx="16" fill="#0d1428" stroke="#38bdf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
+<path d="M40,542 a16,16 0 0 1 16,-16 h318 a16,16 0 0 1 16,16 v6 h-350 z" fill="#38bdf8"/>
+<circle cx="80" cy="596" r="23" fill="#082f49" stroke="#38bdf8" stroke-width="2.5"/>
+<text x="80" y="604" font-size="23" font-weight="800" fill="#38bdf8" text-anchor="middle">✓</text>
+<text x="116" y="592" font-size="19" font-weight="800" fill="#f8fafc" text-anchor="start" letter-spacing="0.5">CLOSED</text>
+<text x="116" y="614" font-size="13.5" font-weight="600" fill="#38bdf8" text-anchor="start">The record stays</text>
+<line x1="62" y1="642" x2="368" y2="642" stroke="#1e293b" stroke-width="1.5"/>
+<circle cx="70" cy="673" r="4.5" fill="#38bdf8"/>
+<text x="86" y="678" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Timeline of every change</text>
+<circle cx="70" cy="713" r="4.5" fill="#38bdf8"/>
+<text x="86" y="718" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Photos, code check and who did</text>
+<text x="86" y="740" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">what</text>
+<circle cx="70" cy="775" r="4.5" fill="#38bdf8"/>
+<text x="86" y="780" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">Feeds analytics and reliability</text>
+<text x="86" y="802" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">scores</text>
+<path d="M394,194 L419,194" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<path d="M779,194 L804,194" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<path d="M985.0,480 L985.0,520" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<path d="M806,596 L781,596" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<path d="M421,596 L396,596" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
+<text x="40" y="922" font-size="14" font-weight="800" fill="#64748b" text-anchor="start" letter-spacing="2.5">SAFETY NETS</text>
+<rect x="40" y="938" width="272" height="156" rx="14" fill="#0b1224" stroke="#fbbf24" stroke-opacity="0.45" stroke-width="1.5"/>
+<rect x="40" y="954" width="5" height="124" rx="2.5" fill="#fbbf24"/>
+<text x="62" y="972" font-size="14" font-weight="800" fill="#fbbf24" text-anchor="start" letter-spacing="1.2">LOCKED ROOM</text>
+<text x="62" y="1000" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Door photo is required and</text>
+<text x="62" y="1022" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">the SLA clock pauses. The</text>
+<text x="62" y="1044" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">occupant picks '15 minutes'</text>
+<text x="62" y="1066" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">or a time slot.</text>
+<rect x="329" y="938" width="272" height="156" rx="14" fill="#0b1224" stroke="#fb7185" stroke-opacity="0.45" stroke-width="1.5"/>
+<rect x="329" y="954" width="5" height="124" rx="2.5" fill="#fb7185"/>
+<text x="351" y="972" font-size="14" font-weight="800" fill="#fb7185" text-anchor="start" letter-spacing="1.2">MISSED DEADLINE</text>
+<text x="351" y="1000" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">The block warden is alerted.</text>
+<text x="351" y="1022" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Still open 24 hours later?</text>
+<text x="351" y="1044" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">The chief warden is alerted</text>
+<text x="351" y="1066" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">too.</text>
+<rect x="618" y="938" width="272" height="156" rx="14" fill="#0b1224" stroke="#c084fc" stroke-opacity="0.45" stroke-width="1.5"/>
+<rect x="618" y="954" width="5" height="124" rx="2.5" fill="#c084fc"/>
+<text x="640" y="972" font-size="14" font-weight="800" fill="#c084fc" text-anchor="start" letter-spacing="1.2">DISPUTES</text>
+<text x="640" y="1000" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Code refusals and false 'room</text>
+<text x="640" y="1022" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">locked' claims go to the</text>
+<text x="640" y="1044" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">warden, who decides from</text>
+<text x="640" y="1066" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">photos and the timeline.</text>
+<rect x="907" y="938" width="272" height="156" rx="14" fill="#0b1224" stroke="#38bdf8" stroke-opacity="0.45" stroke-width="1.5"/>
+<rect x="907" y="954" width="5" height="124" rx="2.5" fill="#38bdf8"/>
+<text x="929" y="972" font-size="14" font-weight="800" fill="#38bdf8" text-anchor="start" letter-spacing="1.2">LEARNING</text>
+<text x="929" y="1000" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Every prediction is stored,</text>
+<text x="929" y="1022" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">then scored against what</text>
+<text x="929" y="1044" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">really happened, in working</text>
+<text x="929" y="1066" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">minutes.</text>
+</svg>

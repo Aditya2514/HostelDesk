@@ -1,10 +1,6 @@
 <div align="center">
 
-# 🏠 HostelDesk
-
-### The hostel complaint register, rebuilt as software that keeps its promises.
-
-**Every complaint gets a predicted fix time. Staff can't mark a job done without proof.**
+<img src="docs/assets/banner.svg" alt="HostelDesk: the hostel complaint register, rebuilt as software that keeps its promises" width="100%"/>
 
 <br/>
 
@@ -16,15 +12,50 @@
 ![Tests](https://img.shields.io/badge/unit%20tests-201-2ea44f)
 ![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 
+**[Live app](#-deployment)** · **[Demo accounts](#-demo-accounts)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Deployment guide](docs/DEPLOYMENT.md)**
+
 <br/>
 
-**[Live app](#-deployment)** · **[Demo accounts](#-demo-accounts)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Deployment guide](docs/DEPLOYMENT.md)**
+<img src="docs/assets/tour.gif" alt="Animated tour: the student sees an ETA range, the technician works a planned queue, a locked room pauses the clock, a completion code proves the job, and the warden arbitrates disputes" width="860"/>
+
+<sub>A 30-second tour of the real app, built from the screenshots below.</sub>
 
 </div>
 
 ---
 
-## 📸 Screenshots
+## 📑 Contents
+
+| | | |
+|---|---|---|
+| 1. [Why it exists](#-why-it-exists) | 6. [Features by role](#-features-by-role) | 11. [Environment variables](#-environment-variables) |
+| 2. [The idea in one picture](#-the-idea-in-one-picture) | 7. [How the ETA is predicted](#-how-the-eta-is-predicted) | 12. [Deployment](#-deployment) |
+| 3. [See it working](#-see-it-working) | 8. [How completion is proven](#-how-completion-is-proven) | 13. [Demo accounts](#-demo-accounts) |
+| 4. [Who it's for](#-who-its-for) | 9. [Architecture](#-architecture) | 14. [Testing](#-testing) |
+| 5. [Core workflows](#-core-workflows) | 10. [Tech stack and why](#-tech-stack-and-why) · [Getting started](#-getting-started) | 15. [Security](#-security) · [Scalability](#-scalability) · [Honest notes](#-honest-notes-and-limitations) · [AI usage](#-ai-usage) |
+
+---
+
+## 🧩 Why it exists
+
+In my hostel, room and facility complaints are written into a **paper register** at the warden's desk. Once the entry is made, nobody can answer the questions that matter:
+
+| Question | Paper register | HostelDesk |
+|---|---|---|
+| Who is handling my complaint, and since when? | ❌ Unknown | ✅ **Routed automatically** to whoever can finish it earliest; every change is in a timeline |
+| When will it be fixed? | ❌ No idea, so students wait in their rooms | ✅ A **predicted range** ("likely by 5:30 PM, latest around 6:15 PM") with a plain-language *"Why this estimate?"* |
+| Was the job actually done? | ❌ Anyone can write "done" | ✅ A **4-digit code** only the room's occupants can see, plus photo evidence and a 48-hour dispute window |
+| Is this the same problem 15 other students reported? | ❌ 15 separate entries | ✅ Same-room duplicates are blocked; common-area reports can be **joined** |
+| Which staff are reliable? Which rooms keep breaking? | ❌ No data at all | ✅ **Analytics**: breach rate, reliability scores, repeat-problem rooms, prediction accuracy |
+| What if a deadline is missed? | ❌ Forgotten | ✅ **Automatic escalation** to the warden, then the chief warden |
+
+## 🗺️ The idea in one picture
+
+<div align="center">
+<img src="docs/assets/journey.svg" alt="One complaint, end to end: raise, route and predict, fix, prove, confirm, closed, with safety nets for locked rooms, missed deadlines, disputes and learning" width="100%"/>
+</div>
+
+## 📸 See it working
 
 > Captured from the running app on the seeded demo data (`seed:history` + `seed:demo`).
 
@@ -38,64 +69,32 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/locked-room-flow.png" alt="Locked-room flow with door photo"/><br/><sub><b>Locked room.</b> The technician's door photo is attached, the SLA clock pauses, and the student picks "15 minutes" or a slot. No entry without them.</sub></td>
-    <td width="50%"><img src="docs/screenshots/confirm-or-dispute.png" alt="Student confirming or disputing a resolved ticket"/><br/><sub><b>Proof of completion.</b> The ticket was closed with the student's code and an after-photo. The student can confirm, or report a problem within 48 hours.</sub></td>
+    <td width="50%"><img src="docs/screenshots/locked-room-flow.png" alt="Locked-room flow with door photo"/><br/><sub><b>🔒 Locked room.</b> The technician's door photo is attached, the SLA clock pauses, and the student picks "15 minutes" or a slot. No entry without them.</sub></td>
+    <td width="50%"><img src="docs/screenshots/confirm-or-dispute.png" alt="Student confirming or disputing a resolved ticket"/><br/><sub><b>✅ Proof of completion.</b> Closed with the student's code and an after-photo. The student can confirm, or report a problem within 48 hours.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/staff-queue.png" alt="Technician console with planned day"/><br/><sub><b>Technician console.</b> "My Day" orders the queue by priority and shift windows, with a planned start and finish for each job.</sub></td>
-    <td><img src="docs/screenshots/warden-disputes.png" alt="Warden dispute arbitration queue"/><br/><sub><b>Warden arbitration.</b> A technician-raised "code refused" dispute, with the after-photo on file, waiting for a decision.</sub></td>
+    <td><img src="docs/screenshots/staff-queue.png" alt="Technician console with planned day"/><br/><sub><b>🔧 Technician console.</b> "My Day" orders active tasks by priority and shift windows, with a planned start and finish for each. Completed jobs collapse into their own list.</sub></td>
+    <td><img src="docs/screenshots/warden-disputes.png" alt="Warden dispute arbitration queue"/><br/><sub><b>⚖️ Warden arbitration.</b> A technician-raised "code refused" dispute, with the after-photo on file, waiting for a decision.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/warden-analytics.png" alt="Warden analytics with prediction error trend and staff reliability"/><br/><sub><b>Analytics.</b> Deadline breach rate, weekly prediction error (in working minutes), and a reliability score per technician. Synthetic history is labelled as such.</sub></td>
-    <td><img src="docs/screenshots/warden-complaints.png" alt="Warden active complaints table"/><br/><sub><b>Warden console.</b> Every active complaint in the block, filterable by status, priority and floor.</sub></td>
+    <td><img src="docs/screenshots/warden-analytics.png" alt="Warden analytics with prediction error trend and staff reliability"/><br/><sub><b>📈 Analytics.</b> Deadline breach rate, weekly prediction error (in working minutes), and a reliability score per technician. Synthetic history is labelled as such.</sub></td>
+    <td><img src="docs/screenshots/warden-complaints.png" alt="Warden active complaints table"/><br/><sub><b>🛡️ Warden console.</b> Every active complaint in the block, filterable by status, priority and floor.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/warden-schedule.png" alt="Technician shift workload"/><br/><sub><b>Staff schedules.</b> The simulated sequence for one technician, with start and finish times.</sub></td>
-    <td><img src="docs/screenshots/admin-time-travel.png" alt="Admin demo clock controller"/><br/><sub><b>Demo clock</b> (demo mode only). Move time forward to show escalations and auto-close without waiting hours.</sub></td>
+    <td><img src="docs/screenshots/warden-schedule.png" alt="Technician shift workload"/><br/><sub><b>🗓️ Staff schedules.</b> The simulated sequence for one technician, with start and finish times.</sub></td>
+    <td><img src="docs/screenshots/admin-time-travel.png" alt="Admin demo clock controller"/><br/><sub><b>⏩ Demo clock</b> (demo mode only). Move time forward to show escalations and auto-close without waiting hours.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/student-dashboard.png" alt="Student dashboard"/><br/><sub><b>Student dashboard.</b> Room tickets are shared with roommates; common-area complaints have their own tab.</sub></td>
-    <td><img src="docs/screenshots/admin-rooms.png" alt="Admin rooms and occupancy"/><br/><sub><b>Admin.</b> Rooms and occupancy (max 2 per room), CSV import, staff and shifts, categories, analytics and audit log.</sub></td>
+    <td><img src="docs/screenshots/student-dashboard.png" alt="Student dashboard"/><br/><sub><b>🎓 Student dashboard.</b> Room tickets are shared with roommates; common-area complaints have their own tab.</sub></td>
+    <td><img src="docs/screenshots/admin-rooms.png" alt="Admin rooms and occupancy"/><br/><sub><b>⚙️ Admin.</b> Rooms and occupancy (max 2 per room), CSV import, staff and shifts, categories, analytics and audit log.</sub></td>
   </tr>
 </table>
 
----
-
-## 📑 Contents
-
-1. [Screenshots](#-screenshots)
-2. [The problem](#-the-problem)
-3. [Who it's for](#-who-its-for)
-4. [The solution](#-the-solution)
-5. [Core workflows](#-core-workflows)
-6. [Features by role](#-features-by-role)
-7. [How the ETA is predicted](#-how-the-eta-is-predicted)
-8. [How completion is proven](#-how-completion-is-proven)
-9. [Architecture](#-architecture)
-10. [Tech stack and why](#-tech-stack-and-why)
-11. [Getting started](#-getting-started)
-12. [Environment variables](#-environment-variables)
-13. [Deployment](#-deployment)
-14. [Demo accounts](#-demo-accounts)
-15. [Testing](#-testing)
-16. [Security](#-security)
-17. [Scalability](#-scalability)
-18. [Honest notes and limitations](#-honest-notes-and-limitations)
-19. [AI usage](#-ai-usage)
-
----
-
-## 🧩 The problem
-
-In my hostel, room and facility complaints are written into a **paper register** at the warden's desk. Once the entry is made, nobody can answer the questions that matter:
-
-| Question | Paper register |
-|---|---|
-| Who is handling my complaint, and since when? | ❌ Unknown |
-| When will it be fixed? | ❌ No idea, so students wait in their rooms |
-| Was the job actually done? | ❌ Anyone can write "done" |
-| Is this the same problem 15 other students already reported? | ❌ 15 separate entries |
-| Which staff are reliable? Which rooms keep breaking? | ❌ No data at all |
+<details>
+<summary><b>🔑 Login screen</b></summary>
+<br/>
+<img src="docs/screenshots/login.png" alt="Login screen with demo account quick-login buttons" width="720"/>
+</details>
 
 ## 👥 Who it's for
 
@@ -107,33 +106,52 @@ In my hostel, room and facility complaints are written into a **paper register**
 | 🏛️ **Chief warden** | Campus-wide view, second-level escalations, staff performance |
 | ⚙️ **Admin** | Rooms and occupancy, staff and shifts, categories and deadlines |
 
-## 💡 The solution
-
-| Paper register problem | What HostelDesk does |
-|---|---|
-| Nobody knows who has it | Each ticket is **routed automatically** to the staff member who can finish it earliest; every change is recorded in a timeline |
-| No ETA | A **predicted completion range** ("likely by 5:30 PM, latest around 6:15 PM") with a plain-language *"Why this estimate?"* explanation |
-| Fake "done" | A **4-digit completion code** only the room's occupants can see, plus photo evidence and a 48-hour dispute window |
-| Duplicate entries | Same-room duplicates are blocked; common-area reports can be **joined** instead of repeated |
-| No data | **Analytics**: deadline breaches, staff reliability scores, repeat-problem rooms, and prediction accuracy over time |
-| Complaints forgotten | **Automatic escalation** to the warden, then the chief warden, when deadlines are missed |
-
 ## 🔄 Core workflows
 
-**1. Raise → route → predict**
-A student reports an issue for their room or a common area → the category sets the trade, priority and deadline → HostelDesk simulates every eligible staff member's schedule → the ticket goes to whoever finishes **earliest** → the student sees an ETA range.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-**2. Fix → prove → confirm**
-Staff start the job → a **completion code** appears on the occupants' phones → staff upload an after-photo and enter the code → the ticket is resolved → occupants confirm, or dispute within 48 hours (**a dispute always wins**).
+**1 · Raise → route → predict**<br/>
+A student reports an issue for their room or a common area. The category sets the trade, priority and deadline. HostelDesk simulates every eligible staff member's schedule, and the ticket goes to whoever finishes **earliest**. The student sees an ETA range.
 
-**3. Report together, not twice**
-A second student on the same floor reports the same washroom issue → HostelDesk shows the existing report → they **join** it and get every update, instead of creating a duplicate.
+</td>
+<td width="50%" valign="top">
 
-**4. Locked room**
-Staff arrive and the room is locked → they upload a **door photo** → the deadline clock **pauses** → occupants choose "I'll be there in 15 min" or book a time slot → after a 2nd locked visit, a slot is required.
+**2 · Fix → prove → confirm**<br/>
+Staff start the job and a **completion code** appears on the occupants' phones. Staff upload an after-photo and enter the code, and the ticket is resolved. Occupants confirm, or dispute within 48 hours (**a dispute always wins**).
 
-**5. Nothing slips through**
-A deadline is missed → the block warden is alerted → still open 24 hours later → the chief warden is alerted. Resolved tickets with no response close automatically after 48 hours.
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**3 · Report together, not twice**<br/>
+A second student on the same floor reports the same washroom issue. HostelDesk shows the existing report, and they **join** it and get every update instead of creating a duplicate.
+
+</td>
+<td valign="top">
+
+**4 · Locked room**<br/>
+Staff arrive and the room is locked. They upload a **door photo** and the deadline clock **pauses**. Occupants choose "I'll be there in 15 min" or book a slot. After a second locked visit, a slot is required.
+
+</td>
+</tr>
+</table>
+
+**5 · Nothing slips through.** A deadline is missed, so the block warden is alerted. Still open 24 hours later, the chief warden is alerted. Resolved tickets with no response close automatically after 48 hours.
+
+### 🔒 The locked-room flow
+
+<div align="center">
+<img src="docs/assets/locked-room.svg" alt="Locked-room flow: door photo, clock pauses, occupants notified, then 15 minutes, a slot, a false-claim dispute, or 48 hours of silence" width="100%"/>
+</div>
+
+### ⏰ The escalation flow
+
+<div align="center">
+<img src="docs/assets/escalation.svg" alt="Escalation: deadline missed alerts the block warden, 24 hours later the chief warden; resolved tickets auto-close after 48 hours" width="100%"/>
+</div>
 
 ## ✨ Features by role
 
@@ -152,7 +170,8 @@ A deadline is missed → the block warden is alerted → still open 24 hours lat
 <details>
 <summary><b>🔧 Staff</b></summary>
 
-- Mobile-first queue showing **planned start and finish times** for the day
+- Mobile-first queue showing **planned start and finish times** for the day, with today's shift hours at a glance
+- Active tasks stay in focus; finished jobs move to a collapsed **Completed** list and no longer inflate the queue count
 - Start work, take after-photos with the phone camera, enter the completion code
 - Report a locked room (door photo required), pause for parts, resume
 - Escalate when an occupant refuses to give the code even though the job is done
@@ -182,6 +201,10 @@ A deadline is missed → the block warden is alerted → still open 24 hours lat
 ## ⏳ How the ETA is predicted
 
 No black-box ML. With tens to hundreds of tickets, a transparent formula is more accurate and can be explained in a sentence.
+
+<div align="center">
+<img src="docs/assets/eta-engine.svg" alt="ETA engine: category default and similar past jobs give a duration estimate, shift windows and the queue give a start time, the earliest finisher wins, and the student sees a range" width="100%"/>
+</div>
 
 ### Step 1: How long will the work take?
 
@@ -225,28 +248,11 @@ On the generated history, `npm run seed:history` prints the average error of the
 
 ## 🔐 How completion is proven
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Student
-    actor Staff
-    participant API as HostelDesk API
-    participant DB as PostgreSQL
-    participant CDN as Cloudinary
+The central idea: **the person who benefits from the fix is the one who closes the ticket.** Staff can't mark a room job done on their own, because the code lives only on the occupants' phones.
 
-    Staff->>API: Start work
-    API->>DB: IN_PROGRESS + new 4-digit code
-    Student->>API: Get completion code (occupants only)
-    API-->>Student: 4-digit code
-    Staff->>API: Upload after-photo
-    API->>CDN: Store image
-    API->>DB: Attachment with server timestamp
-    Student-->>Staff: Shares the code once satisfied
-    Staff->>API: Resolve with code
-    API->>DB: Row-locked check, max 5 attempts per 15 min
-    API-->>Staff: RESOLVED
-    Note over Student,API: 48-hour window: confirm closes it,<br/>a dispute reopens it, even after a roommate confirmed
-```
+<div align="center">
+<img src="docs/diagrams/completion-proof.png" alt="Sequence: staff start work, the server creates a 4-digit code, the occupant sees it, staff upload an after-photo and resolve with the code, then a 48-hour window to confirm or dispute" width="100%"/>
+</div>
 
 | Situation | How the job is verified |
 |---|---|
@@ -260,14 +266,9 @@ The code is generated with a cryptographic RNG, returned by **one endpoint only*
 
 ## 🧱 Architecture
 
-```mermaid
-flowchart LR
-    U["📱 Browser<br/>React + Vite"] -->|"HTTPS, same origin"| V["Vercel<br/>static app + /api rewrite"]
-    V -->|"/api/* proxied"| R["Render<br/>Express API (stateless)"]
-    C["⏰ cron-job.org<br/>every 5 min"] -->|"POST /api/jobs/tick"| R
-    R -->|"Prisma, pooled"| N[("Neon<br/>PostgreSQL")]
-    R -->|"signed uploads"| CL[("Cloudinary<br/>photo evidence")]
-```
+<div align="center">
+<img src="docs/assets/architecture.svg" alt="Architecture: browsers use a Vercel app that proxies /api to a stateless Render API, backed by Neon PostgreSQL and Cloudinary, with cron-job.org triggering jobs every five minutes" width="100%"/>
+</div>
 
 | Module | Responsibility |
 |---|---|
@@ -284,51 +285,17 @@ flowchart LR
 
 ### Ticket lifecycle
 
-```mermaid
-stateDiagram-v2
-    [*] --> ASSIGNED: raised and routed
-    [*] --> RAISED: no eligible staff
-    RAISED --> ASSIGNED: warden assigns
-    ASSIGNED --> IN_PROGRESS: staff start work
-    ASSIGNED --> AWAITING_ACCESS: room locked
-    IN_PROGRESS --> AWAITING_ACCESS: room locked
-    AWAITING_ACCESS --> ASSIGNED: occupant picks a time
-    AWAITING_ACCESS --> CLOSED: no response in 48h
-    IN_PROGRESS --> ON_HOLD: needs a part
-    ON_HOLD --> IN_PROGRESS: resume
-    IN_PROGRESS --> RESOLVED: correct code (room)
-    IN_PROGRESS --> AWAITING_VERIFICATION: after-photo (common area)
-    IN_PROGRESS --> CLOSED: warden upholds code refusal
-    RESOLVED --> CLOSED: confirmed or 48h
-    AWAITING_VERIFICATION --> CLOSED: confirmed or 48h
-    RESOLVED --> REOPENED: dispute
-    AWAITING_VERIFICATION --> REOPENED: dispute
-    CLOSED --> REOPENED: dispute within 48h or warden finds a problem
-    REOPENED --> ASSIGNED: re-routed
-    CLOSED --> [*]
-    REJECTED --> [*]
-```
+<div align="center">
+<img src="docs/assets/ticket-lifecycle.svg" alt="Ticket lifecycle state machine: raised, assigned, in progress, awaiting access, on hold, resolved, awaiting verification, closed, reopened and rejected" width="100%"/>
+</div>
 
 Any open ticket can also be **rejected** by a warden with a reason. Transitions not in the table are refused with `409`. Status changes use conditional updates inside transactions, so two people acting at the same moment can't corrupt a ticket.
 
 ### Data model (simplified)
 
-```mermaid
-erDiagram
-    BLOCK ||--o{ ROOM : contains
-    ROOM ||--o{ ROOM_OCCUPANCY : "occupied via"
-    USER ||--o{ ROOM_OCCUPANCY : "lives in (dated)"
-    USER ||--o{ STAFF_SHIFT : works
-    CATEGORY ||--o{ TICKET : classifies
-    ROOM ||--o{ TICKET : "room tickets"
-    USER ||--o{ TICKET : "raises / assigned"
-    TICKET ||--o{ TICKET_EVENT : "timeline"
-    TICKET ||--o{ ATTACHMENT : "photos"
-    TICKET ||--o{ TICKET_FOLLOWER : "joined by"
-    TICKET ||--o{ DISPUTE : "disputed in"
-    TICKET ||--o{ TICKET_PREDICTION : "ETA history"
-    USER ||--o{ NOTIFICATION : receives
-```
+<div align="center">
+<img src="docs/assets/data-model.svg" alt="Data model: blocks, rooms, dated occupancy, users, categories, tickets and their events, attachments, followers, disputes and predictions, plus staff shifts and notifications" width="100%"/>
+</div>
 
 Occupancy has **from/to dates**, so "who lived in A-301 on 12 Oct" is a query, and a student who moves out loses access to the old room's tickets the same day. A deeper write-up of every algorithm and module is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
@@ -481,6 +448,7 @@ Expected load for a whole campus (~2,000 students, ~60 tickets/day) is tiny for 
 - **Shifts are in IST only**, and a shift can't cross midnight.
 - **Photo evidence is strong but not absolute:** a browser can't force a live camera capture on every device, so photos support decisions rather than prove them on their own. The completion code is the primary proof.
 - **Free-tier hosting** may add a short delay on the first request after inactivity; the 5-minute cron keeps it warm.
+- **Screenshots and the tour are from a local build** on seeded data, not from the deployed site. Diagram sources live in `docs/diagrams/src`.
 
 ## 🤖 AI usage
 
@@ -489,6 +457,7 @@ AI tools were used throughout this project: an AI assistant to discuss and refin
 - **The problem and the core idea are my own:** my hostel's paper register, and the requirements that the app should predict fix times and stop staff marking unfinished work as done.
 - **The design was worked out iteratively in discussion with AI**: the estimator formula, completion codes, the dispute-wins rule, the locked-room flow and the working-minute accuracy metric. Every rule was reviewed, adjusted (for example, room-level tickets shared by roommates, and no entry into locked rooms) and accepted by me before it was built.
 - **Every phase was verified, not trusted:** with unit tests, real-database smoke tests and code review. That process caught several AI-introduced problems, including a transaction rollback that silently disabled the completion-code lockout, a fallback that faked photo uploads, and test output in reports that didn't match what the scripts actually printed. All were fixed and the smoke tests now check for them.
+- **The README visuals** (banner, flow diagrams, screenshots, tour) were generated by an AI agent from the running app and the code, then checked against the implementation.
 
 ---
 

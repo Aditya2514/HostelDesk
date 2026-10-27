@@ -425,14 +425,14 @@ async function main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Ticket 5: Room A-310: "[DEMO] Wi-Fi not working" -> ASSIGNED, dueAt 20 min from now
+  // Ticket 5: Room A-310: "[DEMO] Power point not working" -> ASSIGNED, dueAt 20 min from now
   // ---------------------------------------------------------------------------
   const code5 = await getNextTicketCode();
   const t5 = await prisma.ticket.create({
     data: {
       code: code5,
-      title: "[DEMO] Wi-Fi not working",
-      description: "Hostel Wi-Fi router in corridor has red light, no connectivity in room A-310.",
+      title: "[DEMO] Power point not working",
+      description: "Wall socket near the study table has no power; the plug tester light stays off.",
       locationType: LocationType.ROOM,
       roomId: roomA310?.id,
       blockId: blockA.id,

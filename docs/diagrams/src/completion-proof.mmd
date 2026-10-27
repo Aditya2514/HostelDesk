@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor Student as 🎓 Student / roommates
+    actor Staff as 🔧 Technician
+    participant API as HostelDesk API
+    participant DB as PostgreSQL
+    participant CDN as Cloudinary
+
+    Staff->>API: Start work
+    API->>DB: Status IN_PROGRESS + new 4-digit code
+    Student->>API: Open the ticket
+    API-->>Student: Shows the code (occupants only, one endpoint)
+    Staff->>API: Upload after-photo
+    API->>CDN: Store image
+    API->>DB: Attachment + server timestamp
+    Student-->>Staff: Says the code once the fix is really done
+    Staff->>API: Resolve with the code
+
+    alt correct code
+        API->>DB: Row-locked check, then RESOLVED
+        API-->>Staff: Resolved
+        Note over Student,API: 48-hour window opens: confirm closes it,<br/>a dispute reopens it, silence auto-closes it
+    else wrong code
+        API->>DB: Attempt counter + 1 (row-locked)
+        API-->>Staff: Wrong code, attempts left
+        Note over Staff,API: 5 wrong tries lock the ticket for 15 minutes
+    end

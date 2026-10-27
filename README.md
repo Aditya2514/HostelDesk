@@ -24,26 +24,64 @@
 
 ---
 
+## 📸 Screenshots
+
+> Captured from the running app on the seeded demo data (`seed:history` + `seed:demo`).
+
+<div align="center">
+
+<img src="docs/screenshots/student-eta-breakdown.png" alt="Student ticket view with a completion range and the 'Why this estimate?' breakdown" width="860"/>
+
+**The student sees a completion *range* and exactly why: similar past jobs, the queue ahead, and the technician's shift windows.**
+
+</div>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/locked-room-flow.png" alt="Locked-room flow with door photo"/><br/><sub><b>Locked room.</b> The technician's door photo is attached, the SLA clock pauses, and the student picks "15 minutes" or a slot. No entry without them.</sub></td>
+    <td width="50%"><img src="docs/screenshots/confirm-or-dispute.png" alt="Student confirming or disputing a resolved ticket"/><br/><sub><b>Proof of completion.</b> The ticket was closed with the student's code and an after-photo. The student can confirm, or report a problem within 48 hours.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/staff-queue.png" alt="Technician console with planned day"/><br/><sub><b>Technician console.</b> "My Day" orders the queue by priority and shift windows, with a planned start and finish for each job.</sub></td>
+    <td><img src="docs/screenshots/warden-disputes.png" alt="Warden dispute arbitration queue"/><br/><sub><b>Warden arbitration.</b> A technician-raised "code refused" dispute, with the after-photo on file, waiting for a decision.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/warden-analytics.png" alt="Warden analytics with prediction error trend and staff reliability"/><br/><sub><b>Analytics.</b> Deadline breach rate, weekly prediction error (in working minutes), and a reliability score per technician. Synthetic history is labelled as such.</sub></td>
+    <td><img src="docs/screenshots/warden-complaints.png" alt="Warden active complaints table"/><br/><sub><b>Warden console.</b> Every active complaint in the block, filterable by status, priority and floor.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/warden-schedule.png" alt="Technician shift workload"/><br/><sub><b>Staff schedules.</b> The simulated sequence for one technician, with start and finish times.</sub></td>
+    <td><img src="docs/screenshots/admin-time-travel.png" alt="Admin demo clock controller"/><br/><sub><b>Demo clock</b> (demo mode only). Move time forward to show escalations and auto-close without waiting hours.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/student-dashboard.png" alt="Student dashboard"/><br/><sub><b>Student dashboard.</b> Room tickets are shared with roommates; common-area complaints have their own tab.</sub></td>
+    <td><img src="docs/screenshots/admin-rooms.png" alt="Admin rooms and occupancy"/><br/><sub><b>Admin.</b> Rooms and occupancy (max 2 per room), CSV import, staff and shifts, categories, analytics and audit log.</sub></td>
+  </tr>
+</table>
+
+---
+
 ## 📑 Contents
 
-1. [The problem](#-the-problem)
-2. [Who it's for](#-who-its-for)
-3. [The solution](#-the-solution)
-4. [Core workflows](#-core-workflows)
-5. [Features by role](#-features-by-role)
-6. [How the ETA is predicted](#-how-the-eta-is-predicted)
-7. [How completion is proven](#-how-completion-is-proven)
-8. [Architecture](#-architecture)
-9. [Tech stack and why](#-tech-stack-and-why)
-10. [Getting started](#-getting-started)
-11. [Environment variables](#-environment-variables)
-12. [Deployment](#-deployment)
-13. [Demo accounts](#-demo-accounts)
-14. [Testing](#-testing)
-15. [Security](#-security)
-16. [Scalability](#-scalability)
-17. [Honest notes and limitations](#-honest-notes-and-limitations)
-18. [AI usage](#-ai-usage)
+1. [Screenshots](#-screenshots)
+2. [The problem](#-the-problem)
+3. [Who it's for](#-who-its-for)
+4. [The solution](#-the-solution)
+5. [Core workflows](#-core-workflows)
+6. [Features by role](#-features-by-role)
+7. [How the ETA is predicted](#-how-the-eta-is-predicted)
+8. [How completion is proven](#-how-completion-is-proven)
+9. [Architecture](#-architecture)
+10. [Tech stack and why](#-tech-stack-and-why)
+11. [Getting started](#-getting-started)
+12. [Environment variables](#-environment-variables)
+13. [Deployment](#-deployment)
+14. [Demo accounts](#-demo-accounts)
+15. [Testing](#-testing)
+16. [Security](#-security)
+17. [Scalability](#-scalability)
+18. [Honest notes and limitations](#-honest-notes-and-limitations)
+19. [AI usage](#-ai-usage)
 
 ---
 
@@ -183,7 +221,7 @@ Every prediction is stored and compared with what actually happened. Error is me
 
 > Predicted Mon 5:50 PM, finished Tue 9:20 AM, shifts 9–1 and 2–6 → error = 10 min (Mon) + 20 min (Tue) = **30 working minutes**, not 930.
 
-On the generated history, the weekly average error falls from **27.3 to 14.8 minutes** between the first and last two weeks (synthetic data; see [honest notes](#-honest-notes-and-limitations)).
+On the generated history, `npm run seed:history` prints the average error of the first 50 tickets against the last 50 (roughly **21 → 14 minutes** in a typical run; the exact figures vary with the run date). The analytics chart shows the same data week by week, and it is noisy rather than a straight line. This is synthetic data; see [honest notes](#-honest-notes-and-limitations).
 
 ## 🔐 How completion is proven
 

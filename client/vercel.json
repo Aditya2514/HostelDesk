@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://hosteldesk-server.onrender.com/api/$1"
+      "destination": "https://hosteldesk-uxsm.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

@@ -233,7 +233,7 @@ Password for all pre-seeded accounts: **`Demo@1234`**
 | **Staff (Electrician)** | `electrician1@hosteldesk.dev` | Mobile queue, start work, resolve via 4-digit code |
 | **Staff (Plumber)** | `plumber1@hosteldesk.dev` | Field queue, upload door/after photo evidence |
 | **Block Warden (Block A)** | `warden.a@hosteldesk.dev` | Block A control center, dispute arbitration, quality check |
-| **Chief Warden** | `chief.warden@hosteldesk.dev` | Cross-block analytics dashboard, staff reliability metrics |
+| **Chief Warden** | `chief@hosteldesk.dev` | Cross-block analytics dashboard, staff reliability metrics |
 | **Administrator** | `admin@hosteldesk.dev` | Room moves, CSV import, staff & shift roster, audit logs |
 
 ---

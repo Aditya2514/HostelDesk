@@ -19,8 +19,11 @@ def journey():
     ]
     cw, ch, gap, x0, y0, y1 = 350, 352, 35, 40, 124, 526
     pos = [(x0, y0), (x0 + cw + gap, y0), (x0 + 2*(cw + gap), y0), (x0 + 2*(cw + gap), y1), (x0 + cw + gap, y1), (x0, y1)]
-    for (num, title, actor, col, bullets), (x, y) in zip(stages, pos):
+    PER = 13.0
+    s.flow = False
+    for i, ((num, title, actor, col, bullets), (x, y)) in enumerate(zip(stages, pos)):
         acc, dark = P[col]
+        _m = s.mark()
         s.o.append(f'<g filter="url(#sh)"><rect x="{x}" y="{y}" width="{cw}" height="{ch}" rx="16" fill="#0d1428" stroke="{acc}" stroke-opacity="0.55" stroke-width="1.5"/></g>')
         s.o.append(f'<path d="M{x},{y+16} a16,16 0 0 1 16,-16 h{cw-32} a16,16 0 0 1 16,16 v6 h-{cw} z" fill="{acc}"/>')
         s.o.append(f'<circle cx="{x+40}" cy="{y+70}" r="23" fill="{dark}" stroke="{acc}" stroke-width="2.5"/>')
@@ -35,11 +38,14 @@ def journey():
             for k, ln in enumerate(lines):
                 s.text(x + 46, by + k*22, ln, 15.5, "#cbd5e1")
             by += len(lines) * 22 + 18
+        s.rise(_m)
+        s.spot(x, y, cw, ch, col, i * 2.1, 2.1, PER, r=16)
     my = y0 + 70
-    s.arrow([(x0+cw+4, my), (x0+cw+gap-6, my)]); s.arrow([(x0+2*cw+gap+4, my), (x0+2*cw+2*gap-6, my)])
-    s.arrow([(x0+2*(cw+gap)+cw/2, y0+ch+4), (x0+2*(cw+gap)+cw/2, y1-6)])
+    sq = lambda k: (k * 2.1 + 1.35, 0.7, PER)
+    s.arrow([(x0+cw+4, my), (x0+cw+gap-6, my)], seq=sq(0)); s.arrow([(x0+2*cw+gap+4, my), (x0+2*cw+2*gap-6, my)], seq=sq(1))
+    s.arrow([(x0+2*(cw+gap)+cw/2, y0+ch+4), (x0+2*(cw+gap)+cw/2, y1-6)], seq=sq(2))
     my2 = y1 + 70
-    s.arrow([(x0+2*(cw+gap)-4, my2), (x0+cw+gap+cw+6, my2)]); s.arrow([(x0+cw+gap-4, my2), (x0+cw+6, my2)])
+    s.arrow([(x0+2*(cw+gap)-4, my2), (x0+cw+gap+cw+6, my2)], seq=sq(3)); s.arrow([(x0+cw+gap-4, my2), (x0+cw+6, my2)], seq=sq(4))
     ny = y1 + ch + 44
     s.text(x0, ny, "SAFETY NETS", 14, "#64748b", 800, spacing=2.5)
     nets = [("LOCKED ROOM", "amber", "Door photo is required and the SLA clock pauses. The occupant picks '15 minutes' or a time slot."),
@@ -50,11 +56,13 @@ def journey():
     nh = 156
     for i, (t, c, tx) in enumerate(nets):
         acc, dark = P[c]; x = x0 + i * (nw + ng); y = ny + 16
+        _m = s.mark()
         s.o.append(f'<rect x="{x}" y="{y}" width="{nw}" height="{nh}" rx="14" fill="#0b1224" stroke="{acc}" stroke-opacity="0.45" stroke-width="1.5"/>')
         s.o.append(f'<rect x="{x}" y="{y+16}" width="5" height="{nh-32}" rx="2.5" fill="{acc}"/>')
         s.text(x + 22, y + 34, t, 14, acc, 800, spacing=1.2)
         for k, ln in enumerate(textwrap.wrap(tx, 29)):
             s.text(x + 22, y + 62 + k*22, ln, 15, "#cbd5e1")
+        s.rise(_m, delay=1.2 + i * 0.12)
     s.h = ny + 16 + nh + 34
     s.o[0] = s.o[0].replace('height="1000"', f'height="{s.h}"').replace('viewBox="0 0 1200 1000"', f'viewBox="0 0 1200 {s.h}"')
     s.o[3] = s.o[3].replace('height="1000"', f'height="{s.h}"'); s.o[4] = s.o[4].replace('height="998"', f'height="{s.h-2}"')
@@ -71,22 +79,22 @@ def eta():
            ("Queue ahead", "In progress first, then urgent, normal, low; oldest first.")]
     for (h, b), y in zip(ins, [140, 254, 368, 482]):
         s.card(40, y, 300, 100, "slate", h, b, size=14, shadow=False)
-    s.card(390, 140, 430, 200, "indigo", "HOW LONG WILL THE WORK TAKE?", None, num="1")
+    s.card(390, 140, 430, 200, "indigo", "HOW LONG WILL THE WORK TAKE?", None, num="1", spot=(0, 3.2, 9.6))
     s.text(420, 220, "estimate = (5 × default + n × median) ÷ (5 + n)", 15.5, "#e0e7ff", 700)
     s.text(420, 248, "n = number of trustworthy similar jobs. Example:", 13.5, "#94a3b8")
     s.text(420, 266, "default 40 min, observed median 70 min:", 13.5, "#94a3b8")
     for i, (a, b) in enumerate([("n = 0", "40 min"), ("n = 5", "55 min"), ("n = 45", "67 min")]):
         s.pill(420 + i * 130, 284, 124, 40, "indigo", f"{a} → {b}", 13.5)
-    s.card(390, 380, 430, 200, "indigo", "WHEN WILL THEY GET TO IT?", ["Lay every queued job into the technician's real shift windows, skipping breaks, nights and days off."], num="2")
+    s.card(390, 380, 430, 200, "indigo", "WHEN WILL THEY GET TO IT?", ["Lay every queued job into the technician's real shift windows, skipping breaks, nights and days off."], num="2", spot=(3.2, 3.2, 9.6))
     for y in (190, 304, 418, 532): s.arrow([(340, y), (390, y)])
-    s.arrow([(605, 340), (605, 380)])
-    s.card(880, 250, 280, 240, "indigo", "WHO FINISHES FIRST?", ["Run steps 1 and 2 for every eligible technician. The ticket goes to the earliest finish, not the shortest queue."], num="3")
-    s.arrow([(820, 480), (850, 480), (850, 370), (880, 370)])
+    s.arrow([(605, 340), (605, 380)], seq=(2.4, 0.8, 9.6))
+    s.card(880, 250, 280, 240, "indigo", "WHO FINISHES FIRST?", ["Run steps 1 and 2 for every eligible technician. The ticket goes to the earliest finish, not the shortest queue."], num="3", spot=(6.4, 3.2, 9.6))
+    s.arrow([(820, 480), (850, 480), (850, 370), (880, 370)], seq=(5.6, 0.8, 9.6))
     s.card(880, 530, 280, 200, "green", "THE STUDENT SEES", None)
     s.text(904, 596, "Likely by", 15, "#94a3b8"); s.text(904, 632, "Today 12:10 PM", 27, "#34d399", 800)
     s.text(904, 660, "latest around 2:15 PM", 15.5, "#cbd5e1")
     s.text(904, 694, "plus the reasons in plain words", 13.5, "#94a3b8"); s.text(904, 713, "(6 similar repairs, 2 jobs ahead…)", 13.5, "#94a3b8")
-    s.arrow([(1020, 490), (1020, 530)])
+    s.arrow([(1020, 490), (1020, 530)], seq=(8.8, 0.7, 9.6))
     s.card(880, 770, 280, 120, "sky", "SCORED LATER", ["Each prediction is compared with what really happened, in working minutes."], size=14)
     s.arrow([(1020, 730), (1020, 770)], dashed=True)
     s.card(390, 650, 430, 130, "amber", "RE-RUN AUTOMATICALLY", ["When a ticket is added, reassigned, changes priority or is started, and every 5 minutes."], size=14.5)
@@ -101,8 +109,8 @@ def locked():
     steps = [("1", "Door is locked", "The technician arrives and nobody answers."), ("2", "Door photo", "Required. The server stamps the time."),
              ("3", "Clock pauses", "AWAITING_ACCESS: the SLA deadline stops running."), ("4", "Occupants notified", "Every current roommate is told and asked to respond.")]
     for i, (n, h, b) in enumerate(steps):
-        s.card(cx[i], 120, cw, 150, "amber", h, b, num=n, size=14.5)
-        if i < 3: s.arrow([(cx[i]+cw, 190), (cx[i+1], 190)])
+        s.card(cx[i], 120, cw, 150, "amber", h, b, num=n, size=14.5, spot=(i * 2.2, 2.2, 11.5))
+        if i < 3: s.arrow([(cx[i]+cw, 190), (cx[i+1], 190)], seq=(i * 2.2 + 1.5, 0.7, 11.5))
     busy = 306
     s.text(cx[0] + 4, busy - 14, "THE OCCUPANT CHOOSES", 13, "#64748b", 800, spacing=2.2)
     opts = [("green", "'I'll be there in 15 min'", "The technician moves to the top of the queue and returns once you reach your room."),
@@ -193,27 +201,29 @@ def lifecycle():
     s = Svg(1300, 660, "Ticket lifecycle", "State machine: raised, assigned, in progress, awaiting access, on hold, resolved, awaiting verification, closed, reopened, rejected.")
     s.heading("Ticket lifecycle", "Every transition is a row in one tested table. Anything not in it is refused with a 409.")
     NH = 48
-    def node(x, y, w, c, t, size=14): s.node(x, y, w, NH, c, t, size)
+    s.flow = False
+    PER = 10.0
+    def node(x, y, w, c, t, size=14, spot=None): s.node(x, y, w, NH, c, t, size, spot=spot)
     s.o.append('<rect x="750" y="170" width="260" height="262" rx="16" fill="#0a1022" stroke="#475569" stroke-dasharray="6 6" stroke-width="1.5"/>')
     s.text(768, 196, "WAITING FOR THE STUDENT (48 H)", 12, "#64748b", 800, spacing=1.2)
-    node(770, 214, 220, "green", "RESOLVED"); node(770, 372, 220, "orange", "AWAITING_VERIFICATION", 13.5)
+    node(770, 214, 220, "green", "RESOLVED", spot=(6, 2, PER)); node(770, 372, 220, "orange", "AWAITING_VERIFICATION", 13.5)
     s.text(880, 292, "room tickets: code entered", 12.5, "#94a3b8", 400, "middle"); s.text(880, 312, "common areas: after-photo", 12.5, "#94a3b8", 400, "middle")
-    node(40, 290, 120, "indigo", "RAISED"); node(280, 290, 140, "indigo", "ASSIGNED"); node(540, 290, 150, "amber", "IN_PROGRESS")
-    node(380, 440, 130, "orange", "ON_HOLD"); node(430, 110, 190, "orange", "AWAITING_ACCESS"); node(1120, 290, 120, "green", "CLOSED"); node(830, 520, 150, "rose", "REOPENED")
+    node(40, 290, 120, "indigo", "RAISED"); node(280, 290, 140, "indigo", "ASSIGNED", spot=(2, 2, PER)); node(540, 290, 150, "amber", "IN_PROGRESS", spot=(4, 2, PER))
+    node(380, 440, 130, "orange", "ON_HOLD"); node(430, 110, 190, "orange", "AWAITING_ACCESS"); node(1120, 290, 120, "green", "CLOSED", spot=(8, 2, PER)); node(830, 520, 150, "rose", "REOPENED")
     s.pill(40, 170, 104, 36, "slate", "NEW TICKET", 13)
     s.arrow([(92, 206), (92, 290)], label="no eligible staff", lpos=(92, 250))
-    s.arrow([(144, 188), (350, 188), (350, 290)], label="routed to a technician", lpos=(250, 180))
+    s.arrow([(144, 188), (350, 188), (350, 290)], label="routed to a technician", lpos=(250, 180), seq=(0.3, 1.5, PER))
     s.arrow([(160, 314), (280, 314)], label="warden assigns", lpos=(220, 305))
-    s.arrow([(420, 314), (540, 314)], label="start work", lpos=(480, 305))
+    s.arrow([(420, 314), (540, 314)], label="start work", lpos=(480, 305), seq=(2.3, 1.4, PER))
     s.arrow([(330, 290), (330, 134), (430, 134)], label="room locked", lpos=(380, 126))
     s.arrow([(470, 158), (470, 215), (390, 215), (390, 290)], label="occupant picks a time", lpos=(430, 207))
     s.arrow([(600, 290), (600, 158)], label="room locked", lpos=(655, 232))
     s.arrow([(620, 134), (1180, 134), (1180, 290)], label="no reply in 48 h", lpos=(900, 126))
     s.arrow([(565, 338), (565, 452), (510, 452)], label="needs a part", lpos=(535, 398))
     s.arrow([(510, 476), (615, 476), (615, 338)], label="resume", lpos=(655, 398))
-    s.arrow([(690, 304), (730, 304), (730, 238), (770, 238)], label="correct code", lpos=(730, 268))
+    s.arrow([(690, 304), (730, 304), (730, 238), (770, 238)], label="correct code", lpos=(730, 268), seq=(4.3, 1.5, PER))
     s.arrow([(690, 328), (730, 328), (730, 396), (770, 396)], label="after-photo", lpos=(730, 362))
-    s.arrow([(1010, 314), (1120, 314)], label="confirmed / 48 h", lpos=(1065, 304))
+    s.arrow([(1010, 314), (1120, 314)], label="confirmed / 48 h", lpos=(1065, 304), seq=(6.3, 1.5, PER))
     s.arrow([(900, 432), (900, 520)], label="dispute", lpos=(940, 478))
     s.arrow([(1180, 338), (1180, 544), (980, 544)], label="dispute within 48 h", lpos=(1090, 535))
     s.arrow([(830, 544), (350, 544), (350, 338)], label="re-routed", lpos=(590, 535))
@@ -230,6 +240,7 @@ def lifecycle():
 # ───────────────────────── 7. Data model ─────────────────────────
 def datamodel():
     s = Svg(1200, 1000, "Data model", "Entity overview: blocks, rooms, dated occupancy, users, staff shifts, notifications, categories, tickets and their events, photos, followers, disputes and predictions.")
+    s.flow = False
     s.heading("Data model (simplified)", "Occupancy has from/to dates, so 'who lived in A-301 on 12 Oct' is a query.")
     s.text(40, 118, "PEOPLE AND PLACES", 13, "#64748b", 800, spacing=2.2)
     s.entity(40, 130, 150, "slate", "BLOCK", [("name", "A|B|C")])

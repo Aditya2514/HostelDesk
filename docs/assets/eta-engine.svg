@@ -4,93 +4,59 @@
 <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#070b17"/></linearGradient>
 <marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M1,1 L10,6 L1,11 z" fill="#94a3b8"/></marker>
 <filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+<filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2"/></filter>
+<style>
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes march{to{stroke-dashoffset:-24}}
+.rise{animation:rise .65s cubic-bezier(.2,.8,.2,1) backwards}
+.march{animation:march 1.1s linear infinite}
+</style>
 </defs>
 <rect width="1200" height="920" rx="22" fill="url(#bg)"/>
 <rect x="1" y="1" width="1198" height="918" rx="21" fill="none" stroke="#1e293b" stroke-width="2"/>
 <text x="600.0" y="58" text-anchor="middle" font-size="31" font-weight="800" fill="#f8fafc">How an ETA is built</text>
 <text x="600.0" y="88" text-anchor="middle" font-size="16.5" fill="#94a3b8">A transparent formula and a simulation of real shifts. No black box.</text>
 <text x="40" y="128" font-size="13" font-weight="800" fill="#64748b" text-anchor="start" letter-spacing="2.2">WHAT HOSTELDESK KNOWS</text>
-<g><rect x="40" y="140" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="40" y="154" width="5" height="72" rx="2.5" fill="#94a3b8"/>
-<text x="64" y="170" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Category default</text>
-<text x="64" y="200" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">For example a fan repair is 40</text>
-<text x="64" y="221" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">minutes.</text>
-<g><rect x="40" y="254" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="40" y="268" width="5" height="72" rx="2.5" fill="#94a3b8"/>
-<text x="64" y="284" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Similar past jobs</text>
-<text x="64" y="314" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">Only code-verified or confirmed</text>
-<text x="64" y="335" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">jobs: median and 80th percentile.</text>
-<g><rect x="40" y="368" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="40" y="382" width="5" height="72" rx="2.5" fill="#94a3b8"/>
-<text x="64" y="398" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Shift windows</text>
-<text x="64" y="428" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">Real hours in IST: lunch breaks,</text>
-<text x="64" y="449" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">nights, days off.</text>
-<g><rect x="40" y="482" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="40" y="496" width="5" height="72" rx="2.5" fill="#94a3b8"/>
-<text x="64" y="512" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Queue ahead</text>
-<text x="64" y="542" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">In progress first, then urgent,</text>
-<text x="64" y="563" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">normal, low; oldest first.</text>
-<g filter="url(#sh)"><rect x="390" y="140" width="430" height="200" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="390" y="154" width="5" height="172" rx="2.5" fill="#818cf8"/>
-<circle cx="428" cy="174" r="17" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.2"/>
-<text x="428" y="180" font-size="17" font-weight="800" fill="#818cf8" text-anchor="middle">1</text>
-<text x="458" y="175" font-size="16" font-weight="800" fill="#f8fafc" text-anchor="start">HOW LONG WILL THE WORK TAKE?</text>
+<g class="rise" style="animation-delay:0.00s"><g><rect x="40" y="140" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="40" y="154" width="5" height="72" rx="2.5" fill="#94a3b8"/><text x="64" y="170" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Category default</text><text x="64" y="200" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">For example a fan repair is 40</text><text x="64" y="221" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">minutes.</text></g>
+<g class="rise" style="animation-delay:0.08s"><g><rect x="40" y="254" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="40" y="268" width="5" height="72" rx="2.5" fill="#94a3b8"/><text x="64" y="284" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Similar past jobs</text><text x="64" y="314" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">Only code-verified or confirmed</text><text x="64" y="335" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">jobs: median and 80th percentile.</text></g>
+<g class="rise" style="animation-delay:0.16s"><g><rect x="40" y="368" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="40" y="382" width="5" height="72" rx="2.5" fill="#94a3b8"/><text x="64" y="398" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Shift windows</text><text x="64" y="428" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">Real hours in IST: lunch breaks,</text><text x="64" y="449" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">nights, days off.</text></g>
+<g class="rise" style="animation-delay:0.24s"><g><rect x="40" y="482" width="300" height="100" rx="14" fill="#0d1428" stroke="#94a3b8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="40" y="496" width="5" height="72" rx="2.5" fill="#94a3b8"/><text x="64" y="512" font-size="15" font-weight="800" fill="#94a3b8" text-anchor="start" letter-spacing="0.6">Queue ahead</text><text x="64" y="542" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">In progress first, then urgent,</text><text x="64" y="563" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">normal, low; oldest first.</text></g>
+<g class="rise" style="animation-delay:0.32s"><g filter="url(#sh)"><rect x="390" y="140" width="430" height="200" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="390" y="154" width="5" height="172" rx="2.5" fill="#818cf8"/><circle cx="428" cy="174" r="17" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.2"/><text x="428" y="180" font-size="17" font-weight="800" fill="#818cf8" text-anchor="middle">1</text><text x="458" y="175" font-size="16" font-weight="800" fill="#f8fafc" text-anchor="start">HOW LONG WILL THE WORK TAKE?</text></g>
+<g opacity="0"><rect x="386" y="136" width="438" height="208" rx="18" fill="none" stroke="#818cf8" stroke-width="5" filter="url(#glow)"/><rect x="389" y="139" width="432" height="202" rx="15" fill="none" stroke="#818cf8" stroke-width="2.6"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0.0000;0.0001;0.0187;0.3073;0.3333;1.0000" dur="9.6s" repeatCount="indefinite"/></g>
 <text x="420" y="220" font-size="15.5" font-weight="700" fill="#e0e7ff" text-anchor="start">estimate = (5 × default + n × median) ÷ (5 + n)</text>
 <text x="420" y="248" font-size="13.5" font-weight="400" fill="#94a3b8" text-anchor="start">n = number of trustworthy similar jobs. Example:</text>
 <text x="420" y="266" font-size="13.5" font-weight="400" fill="#94a3b8" text-anchor="start">default 40 min, observed median 70 min:</text>
-<rect x="420" y="284" width="124" height="40" rx="20.0" fill="#1e1b4b" stroke="#818cf8" stroke-opacity="0.8" stroke-width="1.5"/>
-<text x="482.0" y="308.725" font-size="13.5" font-weight="700" fill="#818cf8" text-anchor="middle">n = 0 → 40 min</text>
-<rect x="550" y="284" width="124" height="40" rx="20.0" fill="#1e1b4b" stroke="#818cf8" stroke-opacity="0.8" stroke-width="1.5"/>
-<text x="612.0" y="308.725" font-size="13.5" font-weight="700" fill="#818cf8" text-anchor="middle">n = 5 → 55 min</text>
-<rect x="680" y="284" width="124" height="40" rx="20.0" fill="#1e1b4b" stroke="#818cf8" stroke-opacity="0.8" stroke-width="1.5"/>
-<text x="742.0" y="308.725" font-size="13.5" font-weight="700" fill="#818cf8" text-anchor="middle">n = 45 → 67 min</text>
-<g filter="url(#sh)"><rect x="390" y="380" width="430" height="200" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="390" y="394" width="5" height="172" rx="2.5" fill="#818cf8"/>
-<circle cx="428" cy="414" r="17" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.2"/>
-<text x="428" y="420" font-size="17" font-weight="800" fill="#818cf8" text-anchor="middle">2</text>
-<text x="458" y="415" font-size="16" font-weight="800" fill="#f8fafc" text-anchor="start">WHEN WILL THEY GET TO IT?</text>
-<text x="458" y="446" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Lay every queued job into the</text>
-<text x="458" y="468" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">technician's real shift windows, skipping</text>
-<text x="458" y="490" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">breaks, nights and days off.</text>
-<path d="M340,190 L390,190" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<path d="M340,304 L390,304" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<path d="M340,418 L390,418" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<path d="M340,532 L390,532" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<path d="M605,340 L605,380" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<g filter="url(#sh)"><rect x="880" y="250" width="280" height="240" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="880" y="264" width="5" height="212" rx="2.5" fill="#818cf8"/>
-<circle cx="918" cy="284" r="17" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.2"/>
-<text x="918" y="290" font-size="17" font-weight="800" fill="#818cf8" text-anchor="middle">3</text>
-<text x="948" y="285" font-size="16" font-weight="800" fill="#f8fafc" text-anchor="start">WHO FINISHES FIRST?</text>
-<text x="948" y="316" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Run steps 1 and 2 for</text>
-<text x="948" y="338" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">every eligible</text>
-<text x="948" y="360" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">technician. The ticket</text>
-<text x="948" y="382" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">goes to the earliest</text>
-<text x="948" y="404" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">finish, not the</text>
-<text x="948" y="426" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">shortest queue.</text>
-<path d="M820,480 L850,480 L850,370 L880,370" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<g filter="url(#sh)"><rect x="880" y="530" width="280" height="200" rx="14" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="880" y="544" width="5" height="172" rx="2.5" fill="#34d399"/>
-<text x="904" y="560" font-size="16" font-weight="800" fill="#34d399" text-anchor="start" letter-spacing="0.6">THE STUDENT SEES</text>
+<g class="rise" style="animation-delay:0.40s"><rect x="420" y="284" width="124" height="40" rx="20.0" fill="#1e1b4b" stroke="#818cf8" stroke-opacity="0.8" stroke-width="1.5"/><text x="482.0" y="308.725" font-size="13.5" font-weight="700" fill="#818cf8" text-anchor="middle">n = 0 → 40 min</text></g>
+<g class="rise" style="animation-delay:0.48s"><rect x="550" y="284" width="124" height="40" rx="20.0" fill="#1e1b4b" stroke="#818cf8" stroke-opacity="0.8" stroke-width="1.5"/><text x="612.0" y="308.725" font-size="13.5" font-weight="700" fill="#818cf8" text-anchor="middle">n = 5 → 55 min</text></g>
+<g class="rise" style="animation-delay:0.56s"><rect x="680" y="284" width="124" height="40" rx="20.0" fill="#1e1b4b" stroke="#818cf8" stroke-opacity="0.8" stroke-width="1.5"/><text x="742.0" y="308.725" font-size="13.5" font-weight="700" fill="#818cf8" text-anchor="middle">n = 45 → 67 min</text></g>
+<g class="rise" style="animation-delay:0.64s"><g filter="url(#sh)"><rect x="390" y="380" width="430" height="200" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="390" y="394" width="5" height="172" rx="2.5" fill="#818cf8"/><circle cx="428" cy="414" r="17" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.2"/><text x="428" y="420" font-size="17" font-weight="800" fill="#818cf8" text-anchor="middle">2</text><text x="458" y="415" font-size="16" font-weight="800" fill="#f8fafc" text-anchor="start">WHEN WILL THEY GET TO IT?</text><text x="458" y="446" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Lay every queued job into the</text><text x="458" y="468" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">technician's real shift windows, skipping</text><text x="458" y="490" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">breaks, nights and days off.</text></g>
+<g opacity="0"><rect x="386" y="376" width="438" height="208" rx="18" fill="none" stroke="#818cf8" stroke-width="5" filter="url(#glow)"/><rect x="389" y="379" width="432" height="202" rx="15" fill="none" stroke="#818cf8" stroke-width="2.6"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0.0000;0.3333;0.3521;0.6406;0.6667;1.0000" dur="9.6s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:0.45s"><path d="M340,190 L390,190" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M340,190 L390,190" dur="2.40s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0833;0.4583;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0833;0.1133;0.4283;0.4583;1" dur="2.40s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:0.50s"><path d="M340,304 L390,304" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M340,304 L390,304" dur="2.40s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.2375;0.6125;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2375;0.2675;0.5825;0.6125;1" dur="2.40s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:0.55s"><path d="M340,418 L390,418" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M340,418 L390,418" dur="2.44s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.3852;0.7541;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3852;0.4152;0.7241;0.7541;1" dur="2.44s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:0.60s"><path d="M340,532 L390,532" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M340,532 L390,532" dur="2.81s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.4662;0.7865;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.4662;0.4962;0.7565;0.7865;1" dur="2.81s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:0.65s"><path d="M605,340 L605,380" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M605,340 L605,380" dur="9.60s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.2500;0.3333;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.2500;0.2708;0.3125;0.3333;1" dur="9.60s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:1.12s"><g filter="url(#sh)"><rect x="880" y="250" width="280" height="240" rx="14" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="880" y="264" width="5" height="212" rx="2.5" fill="#818cf8"/><circle cx="918" cy="284" r="17" fill="#1e1b4b" stroke="#818cf8" stroke-width="2.2"/><text x="918" y="290" font-size="17" font-weight="800" fill="#818cf8" text-anchor="middle">3</text><text x="948" y="285" font-size="16" font-weight="800" fill="#f8fafc" text-anchor="start">WHO FINISHES FIRST?</text><text x="948" y="316" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">Run steps 1 and 2 for</text><text x="948" y="338" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">every eligible</text><text x="948" y="360" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">technician. The ticket</text><text x="948" y="382" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">goes to the earliest</text><text x="948" y="404" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">finish, not the</text><text x="948" y="426" font-size="15" font-weight="400" fill="#cbd5e1" text-anchor="start">shortest queue.</text></g>
+<g opacity="0"><rect x="876" y="246" width="288" height="248" rx="18" fill="none" stroke="#818cf8" stroke-width="5" filter="url(#glow)"/><rect x="879" y="249" width="282" height="242" rx="15" fill="none" stroke="#818cf8" stroke-width="2.6"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0.0000;0.6667;0.6854;0.9740;1.0000;1.0000" dur="9.6s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:0.75s"><path d="M820,480 L850,480 L850,370 L880,370" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M820,480 L850,480 L850,370 L880,370" dur="9.60s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.5833;0.6667;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.5833;0.6042;0.6458;0.6667;1" dur="9.60s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:1.28s"><g filter="url(#sh)"><rect x="880" y="530" width="280" height="200" rx="14" fill="#0d1428" stroke="#34d399" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="880" y="544" width="5" height="172" rx="2.5" fill="#34d399"/><text x="904" y="560" font-size="16" font-weight="800" fill="#34d399" text-anchor="start" letter-spacing="0.6">THE STUDENT SEES</text></g>
 <text x="904" y="596" font-size="15" font-weight="400" fill="#94a3b8" text-anchor="start">Likely by</text>
 <text x="904" y="632" font-size="27" font-weight="800" fill="#34d399" text-anchor="start">Today 12:10 PM</text>
 <text x="904" y="660" font-size="15.5" font-weight="400" fill="#cbd5e1" text-anchor="start">latest around 2:15 PM</text>
 <text x="904" y="694" font-size="13.5" font-weight="400" fill="#94a3b8" text-anchor="start">plus the reasons in plain words</text>
 <text x="904" y="713" font-size="13.5" font-weight="400" fill="#94a3b8" text-anchor="start">(6 similar repairs, 2 jobs ahead…)</text>
-<path d="M1020,490 L1020,530" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/>
-<g filter="url(#sh)"><rect x="880" y="770" width="280" height="120" rx="14" fill="#0d1428" stroke="#38bdf8" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="880" y="784" width="5" height="92" rx="2.5" fill="#38bdf8"/>
-<text x="904" y="800" font-size="15" font-weight="800" fill="#38bdf8" text-anchor="start" letter-spacing="0.6">SCORED LATER</text>
-<text x="904" y="830" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">Each prediction is compared</text>
-<text x="904" y="851" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">with what really happened, in</text>
-<text x="904" y="872" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">working minutes.</text>
-<path d="M1020,730 L1020,770" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="6 6" marker-end="url(#arr)"/>
-<g filter="url(#sh)"><rect x="390" y="650" width="430" height="130" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g>
-<rect x="390" y="664" width="5" height="102" rx="2.5" fill="#fbbf24"/>
-<text x="414" y="680" font-size="15.5" font-weight="800" fill="#fbbf24" text-anchor="start" letter-spacing="0.6">RE-RUN AUTOMATICALLY</text>
-<text x="414" y="710" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">When a ticket is added, reassigned, changes</text>
-<text x="414" y="731.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">priority or is started, and every 5 minutes.</text>
-<path d="M605,650 L605,580" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="6 6" marker-end="url(#arr)"/>
-<rect x="635.9" y="608" width="108.2" height="21" rx="6" fill="#0a1022"/>
-<text x="690" y="623" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">queue changed</text>
+<g class="rise" style="animation-delay:0.85s"><path d="M1020,490 L1020,530" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M1020,490 L1020,530" dur="9.60s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.9167;0.9896;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.9167;0.9349;0.9714;0.9896;1" dur="9.60s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:1.44s"><g filter="url(#sh)"><rect x="880" y="770" width="280" height="120" rx="14" fill="#0d1428" stroke="#38bdf8" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="880" y="784" width="5" height="92" rx="2.5" fill="#38bdf8"/><text x="904" y="800" font-size="15" font-weight="800" fill="#38bdf8" text-anchor="start" letter-spacing="0.6">SCORED LATER</text><text x="904" y="830" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">Each prediction is compared</text><text x="904" y="851" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">with what really happened, in</text><text x="904" y="872" font-size="14" font-weight="400" fill="#cbd5e1" text-anchor="start">working minutes.</text></g>
+<g class="rise" style="animation-delay:0.95s"><path d="M1020,730 L1020,770" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="6 6" class="march" marker-end="url(#arr)"/></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M1020,730 L1020,770" dur="2.40s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.1625;0.5375;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1625;0.1925;0.5075;0.5375;1" dur="2.40s" repeatCount="indefinite"/></g>
+<g class="rise" style="animation-delay:1.60s"><g filter="url(#sh)"><rect x="390" y="650" width="430" height="130" rx="14" fill="#0d1428" stroke="#fbbf24" stroke-opacity="0.55" stroke-width="1.5"/></g><rect x="390" y="664" width="5" height="102" rx="2.5" fill="#fbbf24"/><text x="414" y="680" font-size="15.5" font-weight="800" fill="#fbbf24" text-anchor="start" letter-spacing="0.6">RE-RUN AUTOMATICALLY</text><text x="414" y="710" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">When a ticket is added, reassigned, changes</text><text x="414" y="731.5" font-size="14.5" font-weight="400" fill="#cbd5e1" text-anchor="start">priority or is started, and every 5 minutes.</text></g>
+<g class="rise" style="animation-delay:1.05s"><path d="M605,650 L605,580" fill="none" stroke="#94a3b8" stroke-width="2.3" stroke-linejoin="round" stroke-dasharray="6 6" class="march" marker-end="url(#arr)"/><rect x="635.9" y="608" width="108.2" height="21" rx="6" fill="#0a1022"/><text x="690" y="623" font-size="13" font-weight="600" fill="#cbd5e1" text-anchor="middle">queue changed</text></g>
+<g opacity="0"><circle r="10" fill="#c7d2fe" opacity=".35" filter="url(#glow)"/><circle r="4.2" fill="#fff"/><animateMotion path="M605,650 L605,580" dur="2.40s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.3167;0.6917;1"/><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3167;0.3467;0.6617;0.6917;1" dur="2.40s" repeatCount="indefinite"/></g>
 </svg>

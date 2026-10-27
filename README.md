@@ -53,6 +53,7 @@ In my hostel, room and facility complaints are written into a **paper register**
 
 <div align="center">
 <img src="docs/assets/journey.svg" alt="One complaint, end to end: raise, route and predict, fix, prove, confirm, closed, with safety nets for locked rooms, missed deadlines, disputes and learning" width="100%"/>
+<sub>The diagrams in this README are animated: highlights step through each stage and pulses show which way things flow.</sub>
 </div>
 
 ## 📸 See it working

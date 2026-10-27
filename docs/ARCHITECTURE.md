@@ -1,75 +1,71 @@
 # HostelDesk — System Architecture & Algorithmic Design
 
-This document provides deep technical reference for HostelDesk's state machines, queuing algorithms, evidence lifecycle, and execution patterns.
+This document provides deep technical reference for HostelDesk's state machine, queuing algorithms, evidence lifecycle, and execution patterns. The diagrams are animated: highlights step through each part in the order a request or ticket moves through it. (Diagram sources: [`docs/diagrams/src`](diagrams/src).)
+
+| | |
+|---|---|
+| [1. System component topology](#1-system-component-topology) | [4. Evidence & dispute model](#4-evidence--dispute-model) |
+| [2. Ticket state machine](#2-ticket-state-machine-specification) | [5. Background automation jobs](#5-background-automation-jobs-apijobstick) |
+| [3. The ETA prediction engine](#3-the-eta-prediction-engine) | |
 
 ---
 
 ## 1. System Component Topology
 
-```mermaid
-graph TD
-  UserBrowser["Client Browser (React 18 + Vite)"]
-  VercelEdge["Vercel Edge CDN (Rewrites /api/*)"]
-  RenderAPI["Express API Server (Render Linux Node.js)"]
-  NeonDB[("Neon Managed PostgreSQL (Pooled PgBouncer)")]
-  CloudinaryStore[("Cloudinary Object CDN")]
-  CronRunner["External Cron (cron-job.org / 5 min)"]
+<div align="center">
+<img src="assets/architecture.svg" alt="Architecture: browsers use a Vercel app that proxies /api to a stateless Render API, backed by Neon PostgreSQL and Cloudinary, with cron-job.org triggering jobs every five minutes" width="100%"/>
+</div>
 
-  UserBrowser -->|"HTTPS (Same-Origin via Rewrites)"| VercelEdge
-  VercelEdge -->|"Forward with Cookies"| RenderAPI
-  CronRunner -->|"POST /api/jobs/tick (x-jobs-secret)"| RenderAPI
-  RenderAPI -->|"Prisma ORM"| NeonDB
-  RenderAPI -->|"Signed REST Multipart Upload"| CloudinaryStore
-```
+| Component | Role |
+|---|---|
+| Client browser (React 18 + Vite) | Single-page app, served as static files from Vercel |
+| Vercel | Rewrites `/api/*` to the API, so the login cookie is first-party (works on Safari / iPhone) |
+| Express API (Render, Node.js) | Stateless JSON API; all state lives in the database |
+| Neon PostgreSQL | Pooled connection (PgBouncer) for the app, direct connection for migrations |
+| Cloudinary | Photo evidence, uploaded with signed multipart requests |
+| External cron (cron-job.org, every 5 min) | `POST /api/jobs/tick` with an `x-jobs-secret` header |
 
 ---
 
 ## 2. Ticket State Machine Specification
 
-HostelDesk enforces a strict deterministic finite-state transition graph. Illegal transitions trigger `400 INVALID_STATUS_TRANSITION` on the server.
+HostelDesk enforces a deterministic transition table (`server/src/modules/tickets/stateMachine.ts`). A transition that is not in the table is refused with `409 INVALID_TRANSITION`; a role that is not allowed to perform a listed transition gets `403 FORBIDDEN_TRANSITION`; transitions that require a reason (hold, reopen, reject) fail with `400 REASON_REQUIRED` when none is given.
 
-```mermaid
-stateDiagram-v2
-  [*] --> RAISED : Student raises complaint
-  RAISED --> ASSIGNED : chooseAssignee routes technician
-  ASSIGNED --> IN_PROGRESS : Technician starts work
-  IN_PROGRESS --> AWAITING_ACCESS : Room locked + door photo
-  AWAITING_ACCESS --> ASSIGNED : Occupant 15m return or booked slot
-  AWAITING_ACCESS --> CLOSED : 48h timeout without occupant response
-  IN_PROGRESS --> ON_HOLD : Parts / admin pause
-  ON_HOLD --> IN_PROGRESS : Resume work
-  IN_PROGRESS --> RESOLVED : 4-digit code verified (Room)
-  IN_PROGRESS --> AWAITING_VERIFICATION : After-photo uploaded (Common)
-  IN_PROGRESS --> CLOSED : Warden upholds CODE_REFUSED dispute
-  AWAITING_VERIFICATION --> CLOSED : Warden / Student confirmation
-  RESOLVED --> CLOSED : Occupant confirms / 48h auto-close
-  RESOLVED --> ASSIGNED : Occupant disputes resolution within 48h
-  CLOSED --> ASSIGNED : Warden inspection problem found / Dispute upheld
-  ASSIGNED --> REJECTED : Warden rejects ticket with reason
-  RAISED --> REJECTED : Warden rejects ticket with reason
-  REJECTED --> [*]
-  CLOSED --> [*]
-```
+<div align="center">
+<img src="assets/ticket-lifecycle.svg" alt="Ticket lifecycle state machine: raised, assigned, in progress, awaiting access, on hold, resolved, awaiting verification, closed, reopened and rejected" width="100%"/>
+</div>
+
+The highlighted path shows the normal case: raised and routed, assigned, work started, resolved with the code, confirmed or auto-closed after 48 hours.
 
 ### Transition Table
 
-| Current Status | Allowed Target Statuses | Trigger / Prerequisite |
+| Current Status | Allowed Target Statuses | Who / Prerequisite |
 |---|---|---|
-| `RAISED` | `ASSIGNED`, `REJECTED` | System routing or Warden rejection |
-| `ASSIGNED` | `IN_PROGRESS`, `REJECTED`, `ASSIGNED` (reassign) | Technician starts work or re-routed |
-| `IN_PROGRESS` | `RESOLVED`, `AWAITING_ACCESS`, `ON_HOLD`, `AWAITING_VERIFICATION`, `CLOSED` | Code match, Door photo, Parts pause, Warden dispute decision |
-| `AWAITING_ACCESS` | `ASSIGNED`, `CLOSED` | 15-min quick return, Slot booking, or 48h access expiration |
-| `ON_HOLD` | `IN_PROGRESS` | Technician resumes with parts |
-| `AWAITING_VERIFICATION` | `CLOSED`, `ASSIGNED` | Confirmation or Warden review |
-| `RESOLVED` | `CLOSED`, `ASSIGNED` | Occupant confirmation, 48h timeout, or Occupant dispute |
-| `CLOSED` | `ASSIGNED` | Roommate dispute within 48h window or Warden problem flag |
-| `REJECTED` | *(Terminal)* | Irreversible; reason recorded in event log |
+| *(new ticket)* | `ASSIGNED`, `RAISED` | System routing, or no eligible staff available |
+| `RAISED` | `ASSIGNED`, `REJECTED` | Warden / admin / system assigns; warden rejects (reason required) |
+| `ASSIGNED` | `IN_PROGRESS`, `AWAITING_ACCESS`, `ASSIGNED` (reassign), `REJECTED` | Staff start work or find the room locked; warden reassigns or rejects |
+| `IN_PROGRESS` | `RESOLVED`, `AWAITING_VERIFICATION`, `AWAITING_ACCESS`, `ON_HOLD`, `CLOSED`, `ASSIGNED`, `REJECTED` | Staff: code match (room), after-photo (common area), door photo, pause for parts (reason required). Warden: uphold a code-refusal dispute (`CLOSED`), reassign, reject |
+| `AWAITING_ACCESS` | `ASSIGNED`, `CLOSED`, `REJECTED` | Occupant picks 15-min return or a slot (`ASSIGNED`); system closes after 48 h without response |
+| `ON_HOLD` | `IN_PROGRESS`, `ASSIGNED`, `REJECTED` | Staff resume with parts; warden reassigns or rejects |
+| `RESOLVED` | `CLOSED`, `REOPENED`, `REJECTED` | Occupant confirms or 48 h auto-close; occupant disputes (reason required) |
+| `AWAITING_VERIFICATION` | `CLOSED`, `REOPENED`, `REJECTED` | Reporter or follower confirms (or 48 h auto-close); reporter disputes |
+| `CLOSED` | `REOPENED` | Student dispute inside the 48 h window, or a warden quality check finds a problem (reason required) |
+| `REOPENED` | `ASSIGNED`, `REJECTED` | System re-routes to a technician; warden may reassign or reject |
+| `REJECTED` | *(terminal)* | Irreversible; the reason is recorded in the event log |
+
+> **Dispute wins.** A dispute moves the ticket to `REOPENED` and increments `reopenCount`; it is then re-routed straight back to `ASSIGNED` when a technician is available. A dispute overrides any confirmation, even one a roommate gave earlier.
+
+Status changes use conditional updates inside transactions (`SELECT … FOR UPDATE` where it matters), so two people acting at the same moment cannot corrupt a ticket.
 
 ---
 
 ## 3. The ETA Prediction Engine
 
 HostelDesk predicts completion times using a 2-stage pipeline: **Empirical Duration Blending** followed by **Discrete Schedule Simulation**.
+
+<div align="center">
+<img src="assets/eta-engine.svg" alt="ETA engine: category default and similar past jobs give a duration estimate, shift windows and the queue give a start time, the earliest finisher wins, and the student sees a range" width="100%"/>
+</div>
 
 ### Stage 1: Blended Duration Estimator
 
@@ -92,7 +88,7 @@ For any ticket category, the duration estimator calculates P50 and P80 completio
 
 ### Stage 2: Schedule Simulation (Queue Laydown)
 
-Each technician's queue is simulated sequentially in priority order (`URGENT` > `NORMAL` > `LOW`, then by creation timestamp).
+Each technician's queue is simulated sequentially: in-progress jobs first, then by priority (`URGENT` > `NORMAL` > `LOW`), then by creation timestamp.
 
 #### The Simulation Algorithm:
 1. Initialize simulation clock: $T = \max(\text{clock.now()}, \text{nextShiftStart})$.
@@ -105,6 +101,11 @@ Each technician's queue is simulated sequentially in priority order (`URGENT` > 
 
 #### Worked Example: Assigning a 60-min Normal Tap Repair at Monday 16:30 IST
 Shifts: 09:00–13:00 and 14:00–18:00 IST.
+
+<div align="center">
+<img src="assets/queue-simulation.svg" alt="Queue simulation: Ramesh finishes Tuesday 10:05 AM, Suresh Tuesday 10:00 AM, Anil Monday 5:30 PM, so Anil gets the ticket" width="100%"/>
+</div>
+
 - **Ramesh:** Works until 18:00; an urgent 45-min job and an older normal 50-min job are ahead. Urgent job 16:30–17:15; the 50-min job runs 17:15–18:00 and finishes at 09:05 Tuesday; the new job then finishes at **10:05 Tuesday**.
 - **Suresh:** Off on Monday, empty queue. Starts 09:00 Tuesday, finishes **10:00 Tuesday**.
 - **Anil:** Works until 18:00, empty queue. Starts now, finishes **17:30 Monday**.
@@ -121,6 +122,10 @@ $$\text{Prediction Error} = \text{workingMinutesBetween}(\min(\text{predictedP50
 #### Why Shift-Aware Working Time is Crucial
 Standard wall-clock calculation $|\text{predicted} - \text{resolved}|$ introduces severe distortion whenever a job spans a meal break, overnight off-hours, or a rest day.
 
+<div align="center">
+<img src="assets/accuracy.svg" alt="Predicted Monday 5:50 PM, finished Tuesday 9:20 AM: wall clock says 930 minutes, shift-aware error is 10 plus 20 equals 30 working minutes" width="100%"/>
+</div>
+
 - **Worked Example:**
   - Staff shifts: 09:00–13:00 and 14:00–18:00 IST (Mon–Fri).
   - Predicted finish: Monday 17:50 IST.
@@ -134,23 +139,36 @@ This metric is evaluated in Node over window-bounded prediction/resolution pairs
 
 ## 4. Evidence & Dispute Model
 
+<div align="center">
+<img src="diagrams/completion-proof.png" alt="Sequence: staff start work, the server creates a 4-digit code, the occupant sees it, staff upload an after-photo and resolve with the code, then a 48-hour window to confirm or dispute" width="100%"/>
+</div>
+
 - **Room Tickets:** Completed exclusively via a cryptographically random 4-digit code shown only to verified room occupants.
   - **Wrong code lockout:** 5 consecutive failed attempts lock the ticket for 15 minutes. All events recorded in `ticket_events`.
 - **Common Area Tickets:** Require a verifiable post-repair photograph uploaded directly to Cloudinary via signed multipart payload.
-- **Dispute Always Wins Rule:** If Roommate A clicks "Confirm Resolved" but Roommate B clicks "Dispute" within the 48-hour window, the dispute immediately overrides confirmation and returns the ticket to `ASSIGNED` with incremented `reopenCount`.
+- **Dispute Always Wins Rule:** If Roommate A clicks "Confirm Resolved" but Roommate B clicks "Dispute" within the 48-hour window, the dispute immediately overrides confirmation: the ticket becomes `REOPENED` with an incremented `reopenCount` and is re-routed to `ASSIGNED`.
 - **Locked Room Protocol:**
   - Visit 1: Mandatory door photo $\implies$ Occupant notified with options: (A) Quick 15-min return or (B) Scheduled 30-min shift slot.
   - Visit 2: Quick return disabled; occupant **must** select a 30-min shift slot.
   - False claim protection: Occupants can dispute false lock claims directly to the Warden.
+
+<div align="center">
+<img src="assets/locked-room.svg" alt="Locked-room flow: door photo, clock pauses, occupants notified, then 15 minutes, a slot, a false-claim dispute, or 48 hours of silence" width="100%"/>
+</div>
 
 ---
 
 ## 5. Background Automation Jobs (`/api/jobs/tick`)
 
 Triggered externally every 5 minutes by cron:
+
+<div align="center">
+<img src="assets/escalation.svg" alt="Escalation: deadline missed alerts the block warden, 24 hours later the chief warden; resolved tickets auto-close after 48 hours" width="100%"/>
+</div>
+
 1. **Auto-Escalation:** Scans all open tickets where `clock.now() > dueAt` (accounting for paused minutes):
    - Level 0 $\to$ 1: Notifies Block Warden.
-   - Level 1 $\to$ 2 (after 24 hours overdue): Notifies Chief Warden.
+   - Level 1 $\to$ 2 (24 hours after the Level 1 escalation, if still open): Notifies Chief Warden.
 2. **Auto-Close:** Automatically transitions tickets in `RESOLVED` / `AWAITING_VERIFICATION` to `CLOSED` after 48 hours without disputes.
 3. **Queue Health & ETAs:** Refreshes active predictions for any overdue shifts.
 4. **Strict Idempotency:** Running `/api/jobs/tick` repeatedly yields zero duplicate transitions or notifications.

@@ -237,6 +237,10 @@ For each eligible staff member, HostelDesk **simulates their queue**: in-progres
 | Suresh | Off on Monday; empty queue | Tuesday 10:00 AM |
 | **Anil** | Works until 6 PM; empty queue | **Monday 5:30 PM** ✅ |
 
+<div align="center">
+<img src="docs/assets/queue-simulation.svg" alt="Queue simulation: Ramesh finishes Tuesday 10:05 AM, Suresh Tuesday 10:00 AM, Anil Monday 5:30 PM, so Anil gets the ticket" width="100%"/>
+</div>
+
 Queues are re-simulated whenever something changes (new ticket, reassignment, priority change, job started) and every 5 minutes by a background job. If a student's ETA slips by more than 30 minutes, they are told why.
 
 ### Does it get better over time?
@@ -244,6 +248,10 @@ Queues are re-simulated whenever something changes (new ticket, reassignment, pr
 Every prediction is stored and compared with what actually happened. Error is measured in **working minutes** inside the staff member's shifts, because a 20-minute miss that crosses a night isn't a 15-hour error:
 
 > Predicted Mon 5:50 PM, finished Tue 9:20 AM, shifts 9–1 and 2–6 → error = 10 min (Mon) + 20 min (Tue) = **30 working minutes**, not 930.
+
+<div align="center">
+<img src="docs/assets/accuracy.svg" alt="Predicted Monday 5:50 PM, finished Tuesday 9:20 AM: wall clock says 930 minutes, shift-aware error is 30 working minutes" width="100%"/>
+</div>
 
 On the generated history, `npm run seed:history` prints the average error of the first 50 tickets against the last 50 (roughly **21 → 14 minutes** in a typical run; the exact figures vary with the run date). The analytics chart shows the same data week by week, and it is noisy rather than a straight line. This is synthetic data; see [honest notes](#-honest-notes-and-limitations).
 

@@ -166,13 +166,16 @@ def escalation():
 def arch():
     s = Svg(1200, 800, "Architecture", "Browsers talk to a Vercel app that proxies /api to a stateless Render API, backed by Neon PostgreSQL and Cloudinary, with cron-job.org triggering jobs.")
     s.heading("Architecture", "Stateless server, external scheduler, one first-party origin.")
+    s.flow = False
+    PER = 14.0
     s.text(40, 126, "USERS", 13, "#64748b", 800, spacing=2.2)
     for i, (c, h, b) in enumerate([("green", "Student phone", "Raises tickets, sees ETA and code"), ("amber", "Technician phone", "Queue, photos, resolve"), ("violet", "Warden / admin laptop", "Disputes, analytics, admin")]):
-        s.card(40, 140 + i*130, 220, 110, c, h, b, size=14, shadow=False)
-    s.card(330, 235, 210, 240, "slate", "VERCEL", ["React + Vite app, served as static files.", "A rewrite forwards /api/* to the API, so the login cookie is first-party and works on Safari."], size=14.5)
+        s.card(40, 140 + i*130, 220, 110, c, h, b, size=14, shadow=False, spot=(0, 1.9, PER))
+    s.card(330, 235, 210, 240, "slate", "VERCEL", ["React + Vite app, served as static files.", "A rewrite forwards /api/* to the API, so the login cookie is first-party and works on Safari."], size=14.5, spot=(2.5, 1.9, PER))
     for y in (195, 325, 455):
-        s.arrow([(260, y), (295, y), (295, 355), (330, 355)] if y != 325 else [(260, 325), (295, 325), (295, 355), (330, 355)])
+        s.arrow([(260, y), (295, y), (295, 355), (330, 355)] if y != 325 else [(260, 325), (295, 325), (295, 355), (330, 355)], seq=(1.7, 0.8, PER))
     s.text(296, 180, "HTTPS", 13, "#cbd5e1", 600, "middle")
+    _m = s.mark()
     s.o.append('<rect x="610" y="130" width="330" height="460" rx="16" fill="#0d1428" stroke="#818cf8" stroke-opacity="0.6" stroke-width="1.5"/>')
     s.text(632, 164, "RENDER  ·  EXPRESS API", 13, "#818cf8", 800, spacing=1.5)
     s.text(632, 184, "stateless", 13, "#94a3b8")
@@ -183,14 +186,16 @@ def arch():
         s.text(634, 428 + k*21, ln, 14, "#cbd5e1")
     for k, ln in enumerate(["Every job is idempotent, so any", "instance can run it, and a retry", "does no harm."]):
         s.text(634, 510 + k*21, ln, 14, "#cbd5e1")
-    s.arrow([(540, 355), (610, 355)], label="/api/*", lpos=(575, 347))
+    s.rise(_m)
+    s.spot(610, 130, 330, 460, "indigo", 5.0, 2.4, PER, r=16)
+    s.arrow([(540, 355), (610, 355)], label="/api/*", lpos=(575, 347), seq=(4.2, 0.7, PER))
     s.text(1000, 126, "DATA", 13, "#64748b", 800, spacing=2.2)
-    s.card(1000, 140, 160, 200, "sky", "NEON", ["PostgreSQL: pooled URL for the app, direct URL for migrations."], size=13.5)
-    s.card(1000, 380, 160, 150, "amber", "CLOUDINARY", ["Photo evidence, uploaded with signed requests."], size=13.5)
-    s.arrow([(940, 240), (1000, 240)], label="Prisma", lpos=(970, 232))
-    s.arrow([(940, 455), (1000, 455)], label="signed", lpos=(970, 447))
-    s.card(610, 630, 330, 140, "green", "CRON-JOB.ORG", ["POST /api/jobs/tick every 5 minutes with a secret header: escalation, auto-close, queue recompute. Also keeps the free instance awake."], size=13.5)
-    s.arrow([(775, 630), (775, 590)], dashed=True)
+    s.card(1000, 140, 160, 200, "sky", "NEON", ["PostgreSQL: pooled URL for the app, direct URL for migrations."], size=13.5, spot=(8.0, 1.8, PER))
+    s.card(1000, 380, 160, 150, "amber", "CLOUDINARY", ["Photo evidence, uploaded with signed requests."], size=13.5, spot=(10.0, 1.8, PER))
+    s.arrow([(940, 240), (1000, 240)], label="Prisma", lpos=(970, 232), seq=(7.4, 0.55, PER))
+    s.arrow([(940, 455), (1000, 455)], label="signed", lpos=(970, 447), seq=(9.4, 0.55, PER))
+    s.card(610, 630, 330, 140, "green", "CRON-JOB.ORG", ["POST /api/jobs/tick every 5 minutes with a secret header: escalation, auto-close, queue recompute. Also keeps the free instance awake."], size=13.5, spot=(12.0, 1.8, PER))
+    s.arrow([(775, 630), (775, 590)], dashed=True, seq=(11.5, 0.5, PER))
     s.text(40, 640, "WHY THIS SHAPE", 13, "#64748b", 800, spacing=2.2)
     for k, ln in enumerate(["Render's free tier sleeps, so timers live", "outside the server. That also keeps the API", "stateless, so adding instances needs no", "code change."]):
         s.text(40, 670 + k*24, ln, 14.5, "#cbd5e1")

@@ -11,7 +11,7 @@ This guide provides step-by-step instructions for deploying the HostelDesk monor
    - **Project Name**: `hosteldesk`
    - **Postgres version**: `16` or `17`
    - **Region**: `AWS Asia Pacific (Singapore)`. Use the **same region** for Render, so every query doesn't cross an ocean.
-   - **Branches**: keep `main` for production and create a `dev` branch for local development and the agent's tests, so test data never reaches the deployed app.
+   - **Branches**: use a **dedicated branch for production** and keep local development on a different one, so test data never reaches the deployed app. Neon names the default branch `production` (older projects: `main`). If you already developed against that default branch, create a new branch from it, wipe the new branch with `cd server && DATABASE_URL=… DIRECT_URL=… npx prisma migrate reset --force --skip-seed`, and use the **new** branch for production. Check that the host (`ep-…`) in the production strings differs from the one in your local `.env`.
 3. In your Neon Project Dashboard, navigate to the **Connection Details** widget:
    - **Pooled Connection String (`DATABASE_URL`)**:
      - Toggle the switch: **"Connection pooling" (Checked/Enabled)**.
@@ -50,8 +50,8 @@ This guide provides step-by-step instructions for deploying the HostelDesk monor
    | Variable | Value / Description |
    |---|---|
    | `NODE_ENV` | `production` |
-   | `DATABASE_URL` | Neon **Pooled** connection string of the **`main`** branch |
-   | `DIRECT_URL` | Neon **Direct** connection string of the **`main`** branch |
+   | `DATABASE_URL` | Neon **Pooled** connection string of the **production** branch, with `&pgbouncer=true` appended |
+   | `DIRECT_URL` | Neon **Direct** connection string of the **production** branch |
    | `JWT_SECRET` | Strong random string (min 32 characters, e.g. `openssl rand -hex 32`). Use a **different** value from your local `.env`. |
    | `CLIENT_ORIGIN` | Your production Vercel URL (e.g. `https://hosteldesk.vercel.app`) |
    | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
@@ -61,7 +61,7 @@ This guide provides step-by-step instructions for deploying the HostelDesk monor
    | `DEMO_MODE` | `true` (enables time-travel and demo accounts panel for project presentation) |
    Render sets `PORT` itself; don't add it.
 5. Click **Create Web Service** and wait for deployment.
-6. Note the service URL Render gives you. If it is **not** exactly `https://hosteldesk-server.onrender.com` (Render adds a suffix when a name is taken), update the destination in `client/vercel.json` to match **before** deploying the frontend; otherwise every API call from the deployed site fails.
+6. Note the service URL Render gives you. If it is **not** exactly `https://hosteldesk-server.onrender.com` (Render adds a suffix when a name is taken; this project's is `https://hosteldesk-uxsm.onrender.com`), update the destination in `client/vercel.json` to match **before** deploying the frontend; otherwise every API call from the deployed site fails.
 
 ---
 
@@ -71,10 +71,10 @@ Once Render finishes the initial deployment and migrations:
 1. From your local development machine with connection to the database (or via Render's Web Shell):
    ```bash
    cd server
-   DATABASE_URL="<main-branch-pooled-url>" DIRECT_URL="<main-branch-direct-url>" npx prisma db seed
-   DATABASE_URL="<main-branch-pooled-url>" DIRECT_URL="<main-branch-direct-url>" npm run seed:history
+   DATABASE_URL="<production-pooled-url>" DIRECT_URL="<production-direct-url>" npx prisma db seed
+   DATABASE_URL="<production-pooled-url>" DIRECT_URL="<production-direct-url>" npm run seed:history
    ```
-   Double-check you're using the **`main`** branch strings, not `dev`.
+   Double-check you're using the **production** branch strings, not your development branch.
 2. The seed script is **idempotent** (safe to run twice), but it deletes and recreates room occupancies, so **don't re-run it on production once real people use the app**. It initializes:
    - Blocks A, B, and C
    - 120 rooms (10 per floor across 4 floors)
@@ -100,7 +100,7 @@ Once Render finishes the initial deployment and migrations:
    | `VITE_API_URL` | Leave empty `""` (requests use same-site `/api` path) |
    | `VITE_DEMO_MODE` | `true` |
 5. **Same-Site API Rewriting (`client/vercel.json`)**:
-   - `client/vercel.json` contains a rewrite rule forwarding `/api/(.*)` directly to your Render backend (`https://hosteldesk-server.onrender.com/api/$1`) before the SPA fallback rewrite.
+   - `client/vercel.json` contains a rewrite rule forwarding `/api/(.*)` directly to your Render backend (`https://hosteldesk-uxsm.onrender.com/api/$1` for this deployment) before the SPA fallback rewrite.
    - *Why:* This allows the browser to communicate with the API on the exact same origin as the frontend. The `token` authentication cookie is treated as **first-party (`SameSite=Lax`)**, completely bypassing Safari / iOS Intelligent Tracking Prevention (ITP) that would otherwise block third-party cookies on iPhone devices.
 6. Click **Deploy**. All client-side routes (`/student`, `/staff`, `/warden`, `/admin`) rewrite to `index.html`.
 7. Copy the Vercel URL (e.g. `https://hosteldesk.vercel.app`) into Render's `CLIENT_ORIGIN` environment variable and redeploy the Render service.

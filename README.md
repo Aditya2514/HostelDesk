@@ -1,295 +1,499 @@
-# HostelDesk
+<div align="center">
 
-> **HostelDesk replaces the hostel complaint register: every complaint gets a predicted fix time, and staff can't mark it done without proof.**
+# 🏠 HostelDesk
 
----
+### The hostel complaint register, rebuilt as software that keeps its promises.
 
-## 1. Problem Statement
+**Every complaint gets a predicted fix time. Staff can't mark a job done without proof.**
 
-Traditional university hostel complaint registers rely on physical paper logbooks kept at the security desk. This creates structural failures:
-- **No Visibility or Accountability:** No one knows who has an active complaint, how long it has been sitting, or whether technicians actually visited.
-- **No Expected Time of Arrival (ETA):** Students remain stuck waiting inside their dorm rooms indefinitely with zero estimation of when repairs will begin.
-- **Unverified Completion:** Maintenance staff can sign off complaints on paper without doing the work or providing any tangible evidence.
-- **Duplicate Chaos:** When common facilities fail (e.g., washroom water supply), dozens of students write the identical issue, fragmenting effort.
-- **Zero Management Intelligence:** Wardens have no metrics on recurring facility failures, technician reliability, or SLA breach trends.
+<br/>
 
----
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white)
+![Tests](https://img.shields.io/badge/unit%20tests-201-2ea44f)
+![Release](https://img.shields.io/badge/release-v1.0.0-blue)
 
-## 2. Target Users
+<br/>
 
-1. **Students:** Raise room or common area complaints, track real-time ETAs, generate secure completion codes, confirm repairs, or dispute shoddy work.
-2. **Maintenance Staff (Technicians):** View daily scheduled queues, start jobs, upload evidence, and verify completion codes.
-3. **Block Wardens:** Oversee block queues, handle escalations, review technician disputes, adjust priorities, and conduct quality spot-checks.
-4. **Chief Warden:** Campus-wide oversight, cross-block analytics, high-level escalations, and technician performance tracking.
-5. **System Administrators:** Room and occupancy management (including bulk CSV import), staff onboarding and shift scheduling, category SLA configuration, and full mutation audit trails.
+**[Live app](#-deployment)** · **[Demo accounts](#-demo-accounts)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Deployment guide](docs/DEPLOYMENT.md)**
 
----
-
-## 3. The Solution
-
-HostelDesk digitizes the entire lifecycle into an accountable, transparent system:
-- **Algorithmic Queue Simulation:** Every ticket is assigned to the technician who can finish it earliest, displaying a realistic completion range (`Likely by P50, latest around P80`) with an explicit "Why this estimate?" breakdown.
-- **Cryptographic & Photographic Proof:** Room repairs require a secret 4-digit code known only to room occupants. Common areas require Cloudinary-backed after-photos.
-- **Dispute-Always-Wins Guarantee:** Roommates have a 48-hour dispute window; any dispute instantly reopens the job regardless of prior confirmations.
-- **Locked-Room Protocol:** Prevents technician ghosting with mandatory door photos, automatic SLA pauses, and 15-minute quick returns or scheduled slot bookings.
-- **Block-Scoped Actionable Analytics:** Wardens and management receive aggregate SQL metrics on deadline breach rates, technician reliability scores, and chronic repeat-issue rooms.
+</div>
 
 ---
 
-## 4. Key Features by Role & Core Workflows
+## 📸 Screenshots
 
-### Role Highlights
-- **Student:** Roommate-shared room ticket visibility; common area duplicate joining; real-time ETA with confidence intervals; completion code generator; 48-hour dispute window.
-- **Staff:** Mobile-first queue sorted by priority and shift hours; one-tap status advancement; door photo upload on locked rooms; dispute escalation on code refusals.
-- **Warden:** Block-level isolation; open dispute arbitration; SLA breach notifications; manual priority override and ticket rejection; quality inspection flags.
-- **Chief Warden & Admin:** Global cross-block filter; technician reliability scoring table; repeat breakdown hotspot list; CSV student import; shift window builder; tamper-evident audit logs.
+> Captured from the running app on the seeded demo data (`seed:history` + `seed:demo`).
 
-### 5 Core Workflows
-1. **Raise to Assignment:** Student files complaint $\to$ Category sets SLA/trade $\to$ Blended duration estimated $\to$ Simulator assigns staff member with earliest finish time $\to$ Live ETA calculated.
-2. **Room Repair & Verification:** Staff taps "Start Work" $\to$ Status becomes `IN_PROGRESS` $\to$ Student retrieves 4-digit code $\to$ Staff inputs code + optional photo $\to$ Ticket transitions to `RESOLVED`.
-3. **Common Area Deduplication:** Student searches/browses common issues $\to$ Existing open ticket identified $\to$ Student clicks "Join Complaint" (increments follower count without creating duplicate tickets).
-4. **Locked Room Handling:** Staff finds room locked $\to$ Uploads mandatory door photo $\to$ Ticket status becomes `AWAITING_ACCESS` (SLA pauses) $\to$ Student selects "Coming in 15m" or books a 30m shift slot.
-5. **Two-Stage Escalation:** Ticket breaches `dueAt` $\to$ Level 1 alert sent to Block Warden $\to$ If unresolved after 24h $\to$ Level 2 alert sent to Chief Warden.
+<div align="center">
+
+<img src="docs/screenshots/student-eta-breakdown.png" alt="Student ticket view with a completion range and the 'Why this estimate?' breakdown" width="860"/>
+
+**The student sees a completion *range* and exactly why: similar past jobs, the queue ahead, and the technician's shift windows.**
+
+</div>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/locked-room-flow.png" alt="Locked-room flow with door photo"/><br/><sub><b>Locked room.</b> The technician's door photo is attached, the SLA clock pauses, and the student picks "15 minutes" or a slot. No entry without them.</sub></td>
+    <td width="50%"><img src="docs/screenshots/confirm-or-dispute.png" alt="Student confirming or disputing a resolved ticket"/><br/><sub><b>Proof of completion.</b> The ticket was closed with the student's code and an after-photo. The student can confirm, or report a problem within 48 hours.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/staff-queue.png" alt="Technician console with planned day"/><br/><sub><b>Technician console.</b> "My Day" orders the queue by priority and shift windows, with a planned start and finish for each job.</sub></td>
+    <td><img src="docs/screenshots/warden-disputes.png" alt="Warden dispute arbitration queue"/><br/><sub><b>Warden arbitration.</b> A technician-raised "code refused" dispute, with the after-photo on file, waiting for a decision.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/warden-analytics.png" alt="Warden analytics with prediction error trend and staff reliability"/><br/><sub><b>Analytics.</b> Deadline breach rate, weekly prediction error (in working minutes), and a reliability score per technician. Synthetic history is labelled as such.</sub></td>
+    <td><img src="docs/screenshots/warden-complaints.png" alt="Warden active complaints table"/><br/><sub><b>Warden console.</b> Every active complaint in the block, filterable by status, priority and floor.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/warden-schedule.png" alt="Technician shift workload"/><br/><sub><b>Staff schedules.</b> The simulated sequence for one technician, with start and finish times.</sub></td>
+    <td><img src="docs/screenshots/admin-time-travel.png" alt="Admin demo clock controller"/><br/><sub><b>Demo clock</b> (demo mode only). Move time forward to show escalations and auto-close without waiting hours.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/student-dashboard.png" alt="Student dashboard"/><br/><sub><b>Student dashboard.</b> Room tickets are shared with roommates; common-area complaints have their own tab.</sub></td>
+    <td><img src="docs/screenshots/admin-rooms.png" alt="Admin rooms and occupancy"/><br/><sub><b>Admin.</b> Rooms and occupancy (max 2 per room), CSV import, staff and shifts, categories, analytics and audit log.</sub></td>
+  </tr>
+</table>
 
 ---
 
-## 5. Tech Stack & Justifications
+## 📑 Contents
 
-| Technology | Selection Justification |
+1. [Screenshots](#-screenshots)
+2. [The problem](#-the-problem)
+3. [Who it's for](#-who-its-for)
+4. [The solution](#-the-solution)
+5. [Core workflows](#-core-workflows)
+6. [Features by role](#-features-by-role)
+7. [How the ETA is predicted](#-how-the-eta-is-predicted)
+8. [How completion is proven](#-how-completion-is-proven)
+9. [Architecture](#-architecture)
+10. [Tech stack and why](#-tech-stack-and-why)
+11. [Getting started](#-getting-started)
+12. [Environment variables](#-environment-variables)
+13. [Deployment](#-deployment)
+14. [Demo accounts](#-demo-accounts)
+15. [Testing](#-testing)
+16. [Security](#-security)
+17. [Scalability](#-scalability)
+18. [Honest notes and limitations](#-honest-notes-and-limitations)
+19. [AI usage](#-ai-usage)
+
+---
+
+## 🧩 The problem
+
+In my hostel, room and facility complaints are written into a **paper register** at the warden's desk. Once the entry is made, nobody can answer the questions that matter:
+
+| Question | Paper register |
 |---|---|
-| **PostgreSQL (Neon)** | ACID transactions ensure atomic room moves, shift updates, and audit logging; relational joins eliminate data duplication. |
-| **Prisma ORM** | Type-safe database queries, schema-driven migrations, and raw aggregate SQL capabilities (`$queryRaw`). |
-| **Express & Node.js** | Lightweight, high-throughput asynchronous runtime well-suited for I/O-heavy scheduling engines and stateless APIs. |
-| **React 18 + Vite** | Fast client bundling, sub-second HMR, and declarative UI state management with `@tanstack/react-query`. |
-| **Vanilla Tailwind CSS** | Clean responsive design tokens, robust mobile layouts (375px+), and zero CSS bloat. |
-| **Cloudinary** | Secure media CDN with server-signed multipart REST uploads, avoiding local filesystem storage on ephemeral hosts. |
-| **Vercel API Rewrites** | Routes `/api/*` through the frontend domain, maintaining first-party `httpOnly` session cookies without third-party cookie blocking. |
-| **External Cron (`cron-job.org`)** | Serverless execution model pings `/api/jobs/tick` every 5 minutes to run idempotent background escalations and prevent free-tier sleep. |
+| Who is handling my complaint, and since when? | ❌ Unknown |
+| When will it be fixed? | ❌ No idea, so students wait in their rooms |
+| Was the job actually done? | ❌ Anyone can write "done" |
+| Is this the same problem 15 other students already reported? | ❌ 15 separate entries |
+| Which staff are reliable? Which rooms keep breaking? | ❌ No data at all |
 
----
+## 👥 Who it's for
 
-## 6. Architecture & System Design
+| Role | Needs |
+|---|---|
+| 🎓 **Students** | Report problems in seconds, know when they'll be fixed, confirm or dispute the fix |
+| 🔧 **Maintenance staff** (electricians, plumbers, carpenters, network, housekeeping) | A clear, ordered queue on their phone; a quick way to prove a job is done |
+| 🛡️ **Block wardens** | Oversight of their block: escalations, disputes, priorities |
+| 🏛️ **Chief warden** | Campus-wide view, second-level escalations, staff performance |
+| ⚙️ **Admin** | Rooms and occupancy, staff and shifts, categories and deadlines |
 
-### Deployment Topology
+## 💡 The solution
 
-```mermaid
-graph TD
-  Browser["Client Browser (React 18)"]
-  Vercel["Vercel Edge (Frontend + /api Rewrites)"]
-  Render["Render Web Service (Express Node API)"]
-  Neon[("Neon PostgreSQL (Pooled PgBouncer)")]
-  Cloudinary[("Cloudinary Object Storage")]
-  Cron["cron-job.org (Every 5 min)"]
+| Paper register problem | What HostelDesk does |
+|---|---|
+| Nobody knows who has it | Each ticket is **routed automatically** to the staff member who can finish it earliest; every change is recorded in a timeline |
+| No ETA | A **predicted completion range** ("likely by 5:30 PM, latest around 6:15 PM") with a plain-language *"Why this estimate?"* explanation |
+| Fake "done" | A **4-digit completion code** only the room's occupants can see, plus photo evidence and a 48-hour dispute window |
+| Duplicate entries | Same-room duplicates are blocked; common-area reports can be **joined** instead of repeated |
+| No data | **Analytics**: deadline breaches, staff reliability scores, repeat-problem rooms, and prediction accuracy over time |
+| Complaints forgotten | **Automatic escalation** to the warden, then the chief warden, when deadlines are missed |
 
-  Browser -->|"HTTPS Same-Origin"| Vercel
-  Vercel -->|"Proxy with httpOnly Cookie"| Render
-  Cron -->|"POST /api/jobs/tick (x-jobs-secret)"| Render
-  Render -->|"Prisma ORM"| Neon
-  Render -->|"Signed REST Multipart"| Cloudinary
+## 🔄 Core workflows
+
+**1. Raise → route → predict**
+A student reports an issue for their room or a common area → the category sets the trade, priority and deadline → HostelDesk simulates every eligible staff member's schedule → the ticket goes to whoever finishes **earliest** → the student sees an ETA range.
+
+**2. Fix → prove → confirm**
+Staff start the job → a **completion code** appears on the occupants' phones → staff upload an after-photo and enter the code → the ticket is resolved → occupants confirm, or dispute within 48 hours (**a dispute always wins**).
+
+**3. Report together, not twice**
+A second student on the same floor reports the same washroom issue → HostelDesk shows the existing report → they **join** it and get every update, instead of creating a duplicate.
+
+**4. Locked room**
+Staff arrive and the room is locked → they upload a **door photo** → the deadline clock **pauses** → occupants choose "I'll be there in 15 min" or book a time slot → after a 2nd locked visit, a slot is required.
+
+**5. Nothing slips through**
+A deadline is missed → the block warden is alerted → still open 24 hours later → the chief warden is alerted. Resolved tickets with no response close automatically after 48 hours.
+
+## ✨ Features by role
+
+<details open>
+<summary><b>🎓 Student</b></summary>
+
+- Raise room or common-area complaints; priority comes from the category, not the student
+- Room tickets are **shared by all current roommates**; moving out removes access automatically
+- ETA range with a *"Why this estimate?"* breakdown and the history of past predictions
+- Completion code card while work is in progress
+- Confirm the fix, or dispute it within 48 hours with a reason
+- Respond to a locked-room visit: 15-minute return or a time slot; report a false "room locked" claim
+- In-app notifications, including friendly delay messages ("a more urgent issue was added ahead of yours")
+</details>
+
+<details>
+<summary><b>🔧 Staff</b></summary>
+
+- Mobile-first queue showing **planned start and finish times** for the day
+- Start work, take after-photos with the phone camera, enter the completion code
+- Report a locked room (door photo required), pause for parts, resume
+- Escalate when an occupant refuses to give the code even though the job is done
+</details>
+
+<details>
+<summary><b>🛡️ Warden and chief warden</b></summary>
+
+- Block-scoped ticket table with filters; reassign, re-prioritise (reason required) or reject
+- **Dispute queue** with all photos, server timestamps and the full timeline; uphold or reject
+- Optional quality spot-checks on closed tickets
+- Staff schedule viewer
+- **Analytics**: breach rate, average resolution time, reliability scores, repeat-problem rooms, prediction-accuracy trend
+</details>
+
+<details>
+<summary><b>⚙️ Admin</b></summary>
+
+- Room browser; move students between rooms (max 2 occupants) or end an occupancy
+- **CSV import** of students with a preview step and all-or-nothing apply
+- Create and deactivate staff (open tickets are safely reassigned); weekly **shift editor**
+- Edit categories: durations, deadlines, default priority
+- Audit log of every admin action
+- Demo time-travel controls (advance the clock to show escalations live)
+</details>
+
+## ⏳ How the ETA is predicted
+
+No black-box ML. With tens to hundreds of tickets, a transparent formula is more accurate and can be explained in a sentence.
+
+### Step 1: How long will the work take?
+
+Start from the category's default duration, and move towards what similar past jobs actually took as evidence builds up:
+
+```
+estimate = (k × default + n × observed_median) / (k + n)        k = 5
 ```
 
-### Module Overview
-- `auth`: JWT token generation, `httpOnly` cookie management, and role-based access control.
-- `tickets`: Core ticket lifecycle, parent-child grouping, and state machine transitions.
-- `scheduling`: Shift accounting, blended duration estimator, and discrete queue simulation engine.
-- `evidence`: Signed Cloudinary uploads, 4-digit code lockout (5 attempts / 15 min), and door photos.
-- `disputes`: Occupant and technician dispute arbitration pipeline.
-- `jobs`: Idempotent SLA escalation, 48h auto-close, and queue health ticks.
-- `analytics`: Scoped SQL aggregate calculations, prediction accuracy tracking, and reliability scores.
-- `admin`: Room occupancy moves, two-step CSV student onboarding, shift editor, and audit logs.
+Only **trustworthy** completions count (verified by completion code or confirmed by the student), and the median is used so one disastrous job can't skew it. **Worked example**, fan repair with a 40-minute default:
 
-### State Machine Diagram
+| Situation | n | Observed median | Estimate |
+|---|---|---|---|
+| No history yet | 0 | n/a | **40 min** |
+| After 5 jobs | 5 | 70 min | (5×40 + 5×70) / 10 = **55 min** |
+| After 45 jobs | 45 | 70 min | (5×40 + 45×70) / 50 = **67 min** |
+
+An 80th-percentile estimate is computed the same way, which gives the "latest" end of the range.
+
+### Step 2: When will this staff member get to it?
+
+For each eligible staff member, HostelDesk **simulates their queue**: in-progress jobs first, then by priority (urgent → normal → low) and age, laid into their real **shift windows**, skipping lunch breaks, nights and days off. The ticket goes to whoever **finishes it earliest**, which is not the same as whoever has the fewest tickets.
+
+**Worked example:** Monday 4:30 PM, a new 60-minute tap repair.
+
+| Staff | Situation | Simulated finish |
+|---|---|---|
+| Ramesh | Works until 6 PM; an urgent 45-min job and an older 50-min job are ahead | Tuesday ~10:05 AM |
+| Suresh | Off on Monday; empty queue | Tuesday 10:00 AM |
+| **Anil** | Works until 6 PM; empty queue | **Monday 5:30 PM** ✅ |
+
+Queues are re-simulated whenever something changes (new ticket, reassignment, priority change, job started) and every 5 minutes by a background job. If a student's ETA slips by more than 30 minutes, they are told why.
+
+### Does it get better over time?
+
+Every prediction is stored and compared with what actually happened. Error is measured in **working minutes** inside the staff member's shifts, because a 20-minute miss that crosses a night isn't a 15-hour error:
+
+> Predicted Mon 5:50 PM, finished Tue 9:20 AM, shifts 9–1 and 2–6 → error = 10 min (Mon) + 20 min (Tue) = **30 working minutes**, not 930.
+
+On the generated history, `npm run seed:history` prints the average error of the first 50 tickets against the last 50 (roughly **21 → 14 minutes** in a typical run; the exact figures vary with the run date). The analytics chart shows the same data week by week, and it is noisy rather than a straight line. This is synthetic data; see [honest notes](#-honest-notes-and-limitations).
+
+## 🔐 How completion is proven
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student
+    actor Staff
+    participant API as HostelDesk API
+    participant DB as PostgreSQL
+    participant CDN as Cloudinary
+
+    Staff->>API: Start work
+    API->>DB: IN_PROGRESS + new 4-digit code
+    Student->>API: Get completion code (occupants only)
+    API-->>Student: 4-digit code
+    Staff->>API: Upload after-photo
+    API->>CDN: Store image
+    API->>DB: Attachment with server timestamp
+    Student-->>Staff: Shares the code once satisfied
+    Staff->>API: Resolve with code
+    API->>DB: Row-locked check, max 5 attempts per 15 min
+    API-->>Staff: RESOLVED
+    Note over Student,API: 48-hour window: confirm closes it,<br/>a dispute reopens it, even after a roommate confirmed
+```
+
+| Situation | How the job is verified |
+|---|---|
+| Room ticket, occupant present | Completion code (any current roommate can give it) + after-photo |
+| Common-area ticket | After-photo → the reporter or anyone who joined confirms or disputes |
+| Room locked | Door photo required; deadline paused; occupant books a return; false claims go to the warden |
+| Occupant refuses the code | Staff raise a dispute → the warden decides from photos and timeline |
+| Nobody responds | Auto-closes after 48 hours |
+
+The code is generated with a cryptographic RNG, returned by **one endpoint only** (current occupants, while in progress), and guarded by a row-locked attempt counter so parallel guessing can't bypass the limit.
+
+## 🧱 Architecture
+
+```mermaid
+flowchart LR
+    U["📱 Browser<br/>React + Vite"] -->|"HTTPS, same origin"| V["Vercel<br/>static app + /api rewrite"]
+    V -->|"/api/* proxied"| R["Render<br/>Express API (stateless)"]
+    C["⏰ cron-job.org<br/>every 5 min"] -->|"POST /api/jobs/tick"| R
+    R -->|"Prisma, pooled"| N[("Neon<br/>PostgreSQL")]
+    R -->|"signed uploads"| CL[("Cloudinary<br/>photo evidence")]
+```
+
+| Module | Responsibility |
+|---|---|
+| `auth` | Login, httpOnly JWT cookie, role guards; room access looked up from occupancy **on every request** |
+| `tickets` | Ticket lifecycle, central access rules, duplicate handling, comments, timeline |
+| `tickets/stateMachine` | Every allowed status transition and who may perform it, as one tested table |
+| `scheduling` | Shift calendar, duration estimator, queue simulator, routing, ETA recompute and delay alerts |
+| `evidence` | Photo uploads (type, size and magic-byte checks), completion codes, resolve, confirm, dispute |
+| `disputes` | Code-refusal and false-lock disputes, warden decisions |
+| `jobs` | Deadline escalation, 48-hour auto-close, queue recompute; all idempotent |
+| `analytics` | Scoped aggregate metrics, reliability score, prediction-accuracy trend |
+| `admin` | Rooms and occupancy, CSV import, staff and shifts, categories, audit log |
+| `lib/clock` | One source of "now"; supports a demo time offset stored in the database |
+
+### Ticket lifecycle
 
 ```mermaid
 stateDiagram-v2
-  [*] --> RAISED : Raise Ticket
-  RAISED --> ASSIGNED : Auto-Routed
-  ASSIGNED --> IN_PROGRESS : Start Work
-  IN_PROGRESS --> AWAITING_ACCESS : Room Locked + Door Photo
-  AWAITING_ACCESS --> ASSIGNED : 15m Return / Booked Slot
-  AWAITING_ACCESS --> CLOSED : 48h Timeout
-  IN_PROGRESS --> ON_HOLD : Parts Pause
-  ON_HOLD --> IN_PROGRESS : Resume
-  IN_PROGRESS --> RESOLVED : Code Verified (Room)
-  IN_PROGRESS --> AWAITING_VERIFICATION : After Photo (Common)
-  IN_PROGRESS --> CLOSED : Warden Upholds Refusal
-  AWAITING_VERIFICATION --> CLOSED : Confirmed / 48h Auto-Close
-  RESOLVED --> CLOSED : Confirmed / 48h Auto-Close
-  RESOLVED --> ASSIGNED : Dispute Upheld
-  CLOSED --> ASSIGNED : Warden Inspection Problem
-  ASSIGNED --> REJECTED : Warden Rejection
-  RAISED --> REJECTED : Warden Rejection
-  REJECTED --> [*]
-  CLOSED --> [*]
+    [*] --> ASSIGNED: raised and routed
+    [*] --> RAISED: no eligible staff
+    RAISED --> ASSIGNED: warden assigns
+    ASSIGNED --> IN_PROGRESS: staff start work
+    ASSIGNED --> AWAITING_ACCESS: room locked
+    IN_PROGRESS --> AWAITING_ACCESS: room locked
+    AWAITING_ACCESS --> ASSIGNED: occupant picks a time
+    AWAITING_ACCESS --> CLOSED: no response in 48h
+    IN_PROGRESS --> ON_HOLD: needs a part
+    ON_HOLD --> IN_PROGRESS: resume
+    IN_PROGRESS --> RESOLVED: correct code (room)
+    IN_PROGRESS --> AWAITING_VERIFICATION: after-photo (common area)
+    IN_PROGRESS --> CLOSED: warden upholds code refusal
+    RESOLVED --> CLOSED: confirmed or 48h
+    AWAITING_VERIFICATION --> CLOSED: confirmed or 48h
+    RESOLVED --> REOPENED: dispute
+    AWAITING_VERIFICATION --> REOPENED: dispute
+    CLOSED --> REOPENED: dispute within 48h or warden finds a problem
+    REOPENED --> ASSIGNED: re-routed
+    CLOSED --> [*]
+    REJECTED --> [*]
 ```
 
-### ETA Engine & Worked Examples
+Any open ticket can also be **rejected** by a warden with a reason. Transitions not in the table are refused with `409`. Status changes use conditional updates inside transactions, so two people acting at the same moment can't corrupt a ticket.
 
-The ETA engine uses a 2-stage model:
-1. **Empirical Duration Blended Estimator:**
-   Calculates median duration using Bayesian sample weighting:
-   $$w = \frac{n}{n + 5}$$
-   $$\text{Estimated P50} = (1 - w) \times \text{Default} + w \times \text{ObservedMedian}$$
-   - *Example:* Default ceiling fan repair = 40 min.
-   - Week 1 ($n=0$): $w=0 \implies \mathbf{40\text{ min}}$.
-   - Week 2 ($n=5$, observed median 70 min): $w=5/(5+5)=0.5 \implies 0.5(40) + 0.5(70) = \mathbf{55\text{ min}}$.
-   - Week 4 ($n=20$, observed median 74 min): $w=20/(20+5)=0.8 \implies 0.2(40) + 0.8(74) = \mathbf{67.2} \approx \mathbf{67\text{ min}}$.
+### Data model (simplified)
 
-2. **Schedule Simulation & Technician Routing:**
-   Simulates each eligible technician's queue in priority order (`URGENT` > `NORMAL` > `LOW`) strictly during active shift windows:
-   - *Example (New 60m Ticket at 16:30 IST; Shift ends at 18:00 IST):*
-     - **Ramesh:** Free. Finishes 16:30 + 60m = **17:30 IST Today**.
-     - **Suresh:** Busy with 45m urgent job until 17:15. Takes 45m today + 15m tomorrow = **09:15 IST Tomorrow**.
-     - **Anil:** Busy queue until tomorrow afternoon = **15:00 IST Tomorrow**.
-     - $\implies$ **Routed to Ramesh** (earliest finish time).
+```mermaid
+erDiagram
+    BLOCK ||--o{ ROOM : contains
+    ROOM ||--o{ ROOM_OCCUPANCY : "occupied via"
+    USER ||--o{ ROOM_OCCUPANCY : "lives in (dated)"
+    USER ||--o{ STAFF_SHIFT : works
+    CATEGORY ||--o{ TICKET : classifies
+    ROOM ||--o{ TICKET : "room tickets"
+    USER ||--o{ TICKET : "raises / assigned"
+    TICKET ||--o{ TICKET_EVENT : "timeline"
+    TICKET ||--o{ ATTACHMENT : "photos"
+    TICKET ||--o{ TICKET_FOLLOWER : "joined by"
+    TICKET ||--o{ DISPUTE : "disputed in"
+    TICKET ||--o{ TICKET_PREDICTION : "ETA history"
+    USER ||--o{ NOTIFICATION : receives
+```
 
-3. **Shift-Aware Prediction Error Metric:**
-   Measures accuracy strictly in technician working minutes:
-   $$\text{Error} = \text{workingMinutesBetween}(\min(\text{predicted}, \text{resolved}), \max(\text{predicted}, \text{resolved}), \text{shifts})$$
-   - *Example:* Predicted Mon 17:50, actual Tue 09:20 (shifts 09:00–13:00 / 14:00–18:00).
-   - Wall-clock error = 930 minutes (distorted by 15h of night off-hours).
-   - HostelDesk working error = 10m (Mon) + 20m (Tue) = **30 working minutes**.
+Occupancy has **from/to dates**, so "who lived in A-301 on 12 Oct" is a query, and a student who moves out loses access to the old room's tickets the same day. A deeper write-up of every algorithm and module is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
-*(For detailed math and code references, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))*
+## 🧰 Tech stack and why
 
----
+| Layer | Choice | Why this, not something else |
+|---|---|---|
+| Language | **TypeScript** (client and server) | One language end to end; types catch contract mismatches between API and UI |
+| Frontend | **React 18 + Vite**, Tailwind CSS, TanStack Query, React Router, Recharts | Fast builds; server state, caching and polling handled by TanStack Query |
+| Backend | **Node.js + Express** | Simple, well understood, enough for a stateless JSON API |
+| Database | **PostgreSQL on Neon** | The data is relational (blocks → rooms → dated occupancy → tickets → events). Correctness features (state transitions, the dispute-wins rule, the code attempt limit) rely on **transactions, row locks, foreign keys and unique constraints**; medians come from `percentile_cont` |
+| ORM | **Prisma** | Type-safe queries; migrations committed to git, so the schema's history is reviewable |
+| Validation | **Zod** | Every request body and query validated before business logic runs |
+| Photos | **Cloudinary** | Evidence must survive server restarts; free-tier hosts have no persistent disk |
+| Background jobs | **External cron → `/api/jobs/tick`** | Render's free tier sleeps, so in-process timers are unreliable; external triggers also keep the server stateless for horizontal scaling |
+| Hosting | **Vercel** (client) + **Render** (API) | Vercel forwards `/api/*` to Render, so the login cookie is **first-party** and works on Safari / iPhone |
 
-## 7. Local Setup
+## 🚀 Getting started
 
-### Prerequisites
-- Node.js 18+ (tested on Node 20 & 22)
-- PostgreSQL database instance
-- Cloudinary credentials
+**Prerequisites:** Node.js 20+, a PostgreSQL database (a free [Neon](https://neon.tech) project works), and a [Cloudinary](https://cloudinary.com) account whose API key has the **Master Admin** role.
 
-### Step-by-Step Installation
 ```bash
-# 1. Clone repository
+# 1. Clone
 git clone https://github.com/Aditya2514/HostelDesk.git
 cd HostelDesk
 
-# 2. Setup Server
+# 2. Server
 cd server
-cp .env.example .env
+cp .env.example .env              # then fill in real values (see below)
 npm install
-npx prisma migrate dev
+npx prisma migrate deploy         # create the schema
+npx prisma db seed                # blocks, rooms, 150 students, staff + shifts, categories
+npm run seed:history              # 200 synthetic past tickets so the estimator has data
+npm run seed:demo                 # 6 [DEMO] tickets for a walkthrough (run this last)
+npm run check:cloudinary          # optional: confirms photo uploads work
+npm run dev                       # API on http://localhost:4000
 
-# 3. Seed Base Data, Synthetic History & Demo Walkthrough Scenarios
-npm run prisma:seed    # Base rooms, users, categories, shifts
-npm run seed:history   # 200 progressive synthetic tickets across 60 days
-npm run seed:demo      # 6 reproducible walkthrough scenario tickets
-
-# 4. Start Server Development Engine
-npm run dev
-
-# 5. Setup & Launch Client (in a separate terminal)
+# 3. Client (second terminal)
 cd ../client
 cp .env.example .env
 npm install
-npm run dev
+npm run dev                       # app on http://localhost:5173
 ```
 
----
+Open **http://localhost:5173** and use the demo account buttons on the login screen.
 
-## 8. Environment Variables
+> ℹ️ Run smoke tests **before** `seed:demo`, not after: the demo tickets occupy room A-301, which the smoke tests also use.
 
-### Server (`server/.env`)
+## 🔑 Environment variables
+
+**Server (`server/.env`)**
+
 | Variable | Purpose | Example |
 |---|---|---|
-| `PORT` | API server listen port | `5000` |
-| `NODE_ENV` | Runtime environment (`development`, `production`) | `development` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host/db?sslmode=require` |
-| `JWT_SECRET` | Secret key for signing session tokens | `your-secure-jwt-secret-key-32chars` |
-| `JOBS_SECRET` | Header secret for triggering `/api/jobs/tick` | `your-secure-jobs-cron-secret` |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud account name | `hosteldesk-cloud` |
-| `CLOUDINARY_API_KEY` | Cloudinary REST API key | `123456789012345` |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret | `abcdefghijklmnopqrstuvwx` |
-| `CLIENT_ORIGIN` | Allowed CORS frontend domain | `http://localhost:5173` |
-| `DEMO_MODE` | Enables admin time-travel offset APIs | `true` |
+| `DATABASE_URL` | **Pooled** Postgres connection used by the app | `postgresql://…-pooler…/neondb?sslmode=require` |
+| `DIRECT_URL` | **Direct** connection used only by migrations | `postgresql://…/neondb?sslmode=require` |
+| `JWT_SECRET` | Signs session tokens (at least 16 characters; use 32+) | `openssl rand -hex 32` |
+| `CLIENT_ORIGIN` | Allowed frontend origin for CORS | `http://localhost:5173` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | `my-cloud` |
+| `CLOUDINARY_API_KEY` | Cloudinary key (Master Admin role) | `123456789012345` |
+| `CLOUDINARY_API_SECRET` | Cloudinary secret | *never commit this* |
+| `JOBS_SECRET` | Required `x-jobs-secret` header for `/api/jobs/tick` | `openssl rand -hex 16` |
+| `DEMO_MODE` | `true` enables the demo time-travel controls | `true` |
+| `PORT` | API port | `4000` |
+| `NODE_ENV` | `development` / `production` / `test` | `development` |
 
-### Client (`client/.env`)
+**Client (`client/.env`)**
+
 | Variable | Purpose | Example |
 |---|---|---|
-| `VITE_API_URL` | Base API URL (empty in production for Vercel rewrites) | `http://localhost:5000` |
+| `VITE_API_URL` | API base URL. **Leave empty** locally (Vite proxy) and in production (Vercel rewrite) | `""` |
+| `VITE_DEMO_MODE` | Shows the demo-account quick-login panel | `true` |
 
----
+## 🌐 Deployment
 
-## 9. Deployment
+| Component | URL |
+|---|---|
+| **Live app** | `<VERCEL_URL>` |
+| API (direct) | `<RENDER_URL>` |
+| Scheduled jobs | cron-job.org → `POST <RENDER_URL>/api/jobs/tick` every 5 minutes (also keeps the free instance awake) |
 
-- **Production Frontend:** `<VERCEL_URL>`
-- **Production Backend API:** `<RENDER_URL>`
-- **Cron Engine:** Configured on `cron-job.org` calling `POST <RENDER_URL>/api/jobs/tick` with `x-jobs-secret` every 5 minutes.
-- *Detailed production setup guide:* See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
----
-
-## 10. Demo Accounts
-
-Password for all pre-seeded accounts: **`Demo@1234`**
-
-| Role | Email | Purpose / View |
-|---|---|---|
-| **Student (Room A-301)** | `student1@hosteldesk.dev` | View room tickets, completion codes, join common issues |
-| **Student (Room A-301)** | `student2@hosteldesk.dev` | Roommate view, 48h dispute window demonstration |
-| **Staff (Electrician)** | `electrician1@hosteldesk.dev` | Mobile queue, start work, resolve via 4-digit code |
-| **Staff (Plumber)** | `plumber1@hosteldesk.dev` | Field queue, upload door/after photo evidence |
-| **Block Warden (Block A)** | `warden.a@hosteldesk.dev` | Block A control center, dispute arbitration, quality check |
-| **Chief Warden** | `chief@hosteldesk.dev` | Cross-block analytics dashboard, staff reliability metrics |
-| **Administrator** | `admin@hosteldesk.dev` | Room moves, CSV import, staff & shift roster, audit logs |
-
----
-
-## 11. Testing & Verification
-
-HostelDesk includes **199 automated unit/integration tests** and **5 end-to-end real-database smoke suites**.
+Step-by-step instructions (Neon branches, Render build command, Vercel rewrite, cron, seeding production) are in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. After deploying, verify the live site with:
 
 ```bash
-# Run unit test suite (27 test files, 199 tests)
-npm test
-
-# Run real database smoke test suites
-npm run smoke:phase2   # Core ticket creation, state transitions, duplicate joining
-npm run smoke:phase3   # Estimator formulas, schedule simulation, queue recomputation
-npm run smoke:phase4   # Completion code lockout, Cloudinary uploads, dispute-wins rule
-npm run smoke:phase5   # SLA pause math, escalation levels, 48h auto-close
-npm run smoke:phase6   # Scoped analytics SQL, room moves, CSV preview/apply, shift limits
-npm run smoke:prod     # Production health and end-to-end user journeys
+cd server && npm run smoke:prod -- --base=<VERCEL_URL>
 ```
 
----
+## 👤 Demo accounts
 
-## 12. Security Architecture
+All passwords: **`Demo@1234`**
 
-- **Password Security:** Salted Bcrypt hashes (`10 rounds`); plain passwords never stored or logged.
-- **Session Transport:** Stateless JWT tokens transported strictly via `httpOnly`, `SameSite=Lax`, `Secure` cookies.
-- **Server-Side Authorization:** Role validation (`requireRole`) enforced on all API endpoints; client UI hiding is treated purely as visual guidance.
-- **Lockout Safeguard:** 5 incorrect completion code attempts locks ticket code entry for 15 minutes.
-- **Input Sanitization & Validation:** All incoming mutation payloads validated with strict `Zod` schemas.
-- **Rate Limiting:** Protects `/api/auth/login` (5 requests / 15 min per IP) and general endpoints via `express-rate-limit`.
-- **Zero Secrets in Git:** Scanned with `git ls-files`; only template `.env.example` committed.
+| Role | Email | Try this |
+|---|---|---|
+| 🎓 Student (room A-301) | `student1@hosteldesk.dev` | Raise a ticket, read its ETA explanation, view the completion code |
+| 🎓 Roommate (A-301) | `student2@hosteldesk.dev` | See the shared room ticket; dispute a fix your roommate confirmed |
+| 🔧 Electrician | `electrician1@hosteldesk.dev` | Planned day, start work, resolve with a code |
+| 🔧 Plumber | `plumber1@hosteldesk.dev` | Photo evidence, room-locked flow |
+| 🛡️ Warden, Block A | `warden.a@hosteldesk.dev` | Disputes, reassign, analytics for Block A |
+| 🏛️ Chief warden | `chief@hosteldesk.dev` | All blocks, second-level escalations |
+| ⚙️ Admin | `admin@hosteldesk.dev` | Room moves, CSV import, shifts, categories, time-travel |
 
----
+`npm run seed:demo` prints the six `[DEMO]` tickets it creates (fresh ETA, joined common-area report, locked room, resolved awaiting confirmation, ticket about to breach its deadline, open dispute) and which account to use for each.
 
-## 13. Scalability & Growth Path
+## 🧪 Testing
 
-| Bottleneck | Architecture Growth Path |
+**Unit tests** (Vitest): **201 tests in 27 files**, covering the state machine, access rules, estimator (exact numbers above), shift arithmetic, queue simulator (including the Ramesh/Suresh/Anil example), completion codes and the attempt lockout, confirm/dispute, locked rooms, SLA pausing, escalation, auto-close, analytics scoring and scoping, and admin permissions.
+
+```bash
+cd server && npm test
+```
+
+**Smoke tests** run against a **real database** over HTTP, one per build phase:
+
+| Script | What it proves end to end |
 |---|---|
-| **Free-Tier Host Cold Starts** | External cron pings `/api/jobs/tick` every 5 min keeping instance awake; transition to paid compute requires zero code changes. |
-| **Database Connection Exhaustion** | Connection pooling enabled via Neon PgBouncer connection string in `DATABASE_URL`. |
-| **Long-Term Analytics Performance** | Raw SQL aggregation queries (`$queryRaw`) utilize database indexes; growth path introduces nightly materialized summary tables. |
-| **Multi-Campus Multi-Tenancy** | Domain tables structured to incorporate `campusId` tenant partitioning across queries. |
-| **Server CPU Scaling** | Stateless API architecture allows horizontal scaling behind a standard load balancer. |
+| `npm run smoke:phase2` | Ticket creation, roommate access, duplicate blocking and joining, permissions, notifications |
+| `npm run smoke:phase3` | Routing to the earliest finisher, ETA explanation without data leaks, delay alerts, idempotent ticks |
+| `npm run smoke:phase4` | Completion code privacy, **5-attempt lockout**, real Cloudinary uploads, dispute-wins, locked rooms, warden decisions |
+| `npm run smoke:phase5` | Two-level escalation (warden, then chief warden 24h later), 48-hour auto-close of resolved and unreachable tickets |
+| `npm run smoke:phase6` | Analytics scope, accuracy trend, reliability scores, room moves, CSV import, shifts, staff deactivation, audit log |
+| `npm run smoke:prod` | The deployed site: health, every role's login through the same-site cookie, a full ticket round-trip |
+
+## 🔒 Security
+
+- **Passwords** hashed with bcrypt; generated temporary passwords are shown once and stored only as hashes
+- **Sessions** in `httpOnly`, `SameSite=Lax`, `Secure` (production) cookies; no tokens in `localStorage`
+- **Authorization on the server** for every endpoint; unauthorized ticket lookups return `404` so IDs can't be probed
+- **Explicit field selection** on ticket responses, with a test that the completion code is never selected
+- **Rate limits:** 10 login attempts per 15 minutes per email; 5 wrong completion codes lock that ticket for 15 minutes
+- **Input validation** with Zod; uploads checked by size, count and file signature (magic bytes)
+- **Audit log** for every admin action; full event timeline for every ticket
+- **No secrets in git:** only `.env.example` files are committed
+
+## 📈 Scalability
+
+Expected load for a whole campus (~2,000 students, ~60 tickets/day) is tiny for PostgreSQL. The design keeps the door open anyway:
+
+| What would break first | Path forward |
+|---|---|
+| Free-tier sleeping | Paid instance; no code changes |
+| Database connections with many instances | Already using Neon's pooled connection string |
+| Analytics over years of history | Nightly summary tables or materialized views |
+| Multiple colleges | Add `campusId` to core tables and scope every query |
+| Server CPU | More instances behind a load balancer. Possible because the server is **stateless** and background jobs are **externally triggered and idempotent** |
+
+## 📝 Honest notes and limitations
+
+- **The historical data is synthetic.** `seed:history` generates 200 past tickets with a fixed random seed, realistic durations, staff speed differences and deadline breaches, so the estimator, analytics and charts have something to work with. Real hostels would accumulate this data through use.
+- **Notifications are in-app only** (polled every 30 seconds); no SMS or email.
+- **Shifts are in IST only**, and a shift can't cross midnight.
+- **Photo evidence is strong but not absolute:** a browser can't force a live camera capture on every device, so photos support decisions rather than prove them on their own. The completion code is the primary proof.
+- **Free-tier hosting** may add a short delay on the first request after inactivity; the 5-minute cron keeps it warm.
+
+## 🤖 AI usage
+
+AI tools were used throughout this project: an AI assistant to discuss and refine the design, and an AI coding agent to generate much of the code, tests and documentation.
+
+- **The problem and the core idea are my own:** my hostel's paper register, and the requirements that the app should predict fix times and stop staff marking unfinished work as done.
+- **The design was worked out iteratively in discussion with AI**: the estimator formula, completion codes, the dispute-wins rule, the locked-room flow and the working-minute accuracy metric. Every rule was reviewed, adjusted (for example, room-level tickets shared by roommates, and no entry into locked rooms) and accepted by me before it was built.
+- **Every phase was verified, not trusted:** with unit tests, real-database smoke tests and code review. That process caught several AI-introduced problems, including a transaction rollback that silently disabled the completion-code lockout, a fallback that faked photo uploads, and test output in reports that didn't match what the scripts actually printed. All were fixed and the smoke tests now check for them.
 
 ---
 
-## 14. Honest Notes & Limitations
+<div align="center">
 
-- **Synthetic Historical Data:** Historical tickets generated via `seed:history` are synthetic, created using deterministic seeded pseudo-random algorithms to simulate 60 days of improving estimation accuracy.
-- **Notification Transport:** Notifications are currently delivered via in-app UI notifications (polling with badge counts); external SMS/push gateways are not integrated.
-- **Single Timezone:** Shifts and operational schedules operate in Indian Standard Time (IST / UTC+5:30).
-- **Free-Tier Hosting Latency:** On Render free-tier instances, cold starts may introduce a 30–50 second delay on the initial request after dormancy.
+Built by **Aditya Singh** · End-term software project, October 2026
 
----
-
-## 15. AI Usage Disclosure
-
-AI coding assistants were utilized for scaffolding boilerplate, exploratory test writing, and syntax optimization. Architectural topology, state machine definitions, algorithmic scheduling logic, dispute-wins guarantees, and real-database verification suites were designed, audited, and validated by the project author.
+</div>

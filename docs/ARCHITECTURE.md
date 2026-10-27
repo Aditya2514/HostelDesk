@@ -75,17 +75,18 @@ HostelDesk predicts completion times using a 2-stage pipeline: **Empirical Durat
 
 For any ticket category, the duration estimator calculates P50 and P80 completion durations by blending default estimates with real historical observations from that block and hostel:
 
-- Block weight: $w_{\text{block}} = n_{\text{block}} / (n_{\text{block}} + 5)$
-- Hostel weight: $w_{\text{hostel}} = n_{\text{hostel}} / (n_{\text{hostel}} + 10)$
-- Blended Estimate: $\text{Est}_{\text{P50}} = (1 - w) \cdot \text{DefaultDuration} + w \cdot \text{ObservedMedian}$
+- Weight of the evidence: $w = n / (n + k)$ with $k = 5$, i.e. the category default counts as much as 5 real observations. The same $k$ is used whether the similar tickets come from the same block (used when there are at least 5) or the whole hostel.
+- Blended estimate: $\text{Est}_{\text{P50}} = (1 - w) \cdot \text{DefaultDuration} + w \cdot \text{ObservedMedian}$, equivalently $(k \cdot \text{Default} + n \cdot \text{Median}) / (k + n)$.
+- The P80 estimate blends $1.5 \times \text{Default}$ with the observed 80th percentile in the same way, and is never below P50.
 
 #### Worked Example
 - Default duration for ceiling fan repair = **40 minutes**.
 - **First week:** $n = 0$ historical observations $\implies w = 0 \implies \mathbf{40\text{ min}}$.
 - **Second week:** $n = 5$ observations with observed median of $70\text{ min}$:
   $$w = \frac{5}{5 + 5} = 0.5 \implies 0.5(40) + 0.5(70) = \mathbf{55\text{ min}}$$
-- **Fourth week:** $n = 20$ observations with observed median of $74\text{ min}$:
-  $$w = \frac{20}{20 + 5} = 0.8 \implies 0.2(40) + 0.8(74) = \mathbf{67.2\text{ min}} \approx \mathbf{67\text{ min}}$$
+- **Later:** $n = 45$ observations, observed median still $70\text{ min}$:
+  $$w = \frac{45}{45 + 5} = 0.9 \implies 0.1(40) + 0.9(70) = \mathbf{67\text{ min}}$$
+  (These exact numbers are asserted in `server/tests/estimator.test.ts`.)
 
 ---
 
@@ -102,13 +103,13 @@ Each technician's queue is simulated sequentially in priority order (`URGENT` > 
    - The timestamp when duration finishes is the ticket's `predictedP50At`.
 4. **Technician Routing Rule:** A new ticket is assigned to the eligible technician whose simulated queue finishes that ticket **earliest**.
 
-#### Worked Example: Assigning a 60-min Normal Electrical Ticket at 16:30 IST
-Technician shifts: 09:00–18:00 IST (lunch break 13:00–14:00).
-- **Ramesh (Electrician):** Currently free. Finishes 16:30 + 60m = **17:30 IST Today**.
-- **Suresh (Electrician):** Has one 45-min urgent ticket in progress. Finishes at 17:15, then starts new ticket: 45 min today (until 18:00 shift end) + 15 min next morning (09:15) = **09:15 IST Tomorrow**.
-- **Anil (Electrician):** Queue busy with 3 jobs until 14:00 tomorrow = **15:00 IST Tomorrow**.
+#### Worked Example: Assigning a 60-min Normal Tap Repair at Monday 16:30 IST
+Shifts: 09:00–13:00 and 14:00–18:00 IST.
+- **Ramesh:** Works until 18:00; an urgent 45-min job and an older normal 50-min job are ahead. Urgent job 16:30–17:15; the 50-min job runs 17:15–18:00 and finishes at 09:05 Tuesday; the new job then finishes at **10:05 Tuesday**.
+- **Suresh:** Off on Monday, empty queue. Starts 09:00 Tuesday, finishes **10:00 Tuesday**.
+- **Anil:** Works until 18:00, empty queue. Starts now, finishes **17:30 Monday**.
 
-$\implies$ **Ramesh is automatically chosen** because 17:30 IST Today is the earliest finish time.
+$\implies$ **Anil is chosen**: earliest finish, not fewest tickets. This exact case is asserted in `server/tests/simulator.test.ts`.
 
 ---
 

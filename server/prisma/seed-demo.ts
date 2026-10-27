@@ -82,6 +82,29 @@ async function main() {
   const roomA310 = await prisma.room.findFirst({ where: { blockId: blockA.id, number: "310" } });
   const roomA401 = await prisma.room.findFirst({ where: { blockId: blockA.id, number: "401" } });
 
+  // 2b. Make sure the demo students actually live in the rooms their demo tickets belong to.
+  // Students can only see tickets for their own room, so without this the login shown in the
+  // demo table (student3 -> A-302, student4 -> A-305) would get "Ticket Not Found".
+  // Idempotent. If the target room is already full (max 2), one synthetic occupant swaps into
+  // the demo student's old room so the 2-per-room limit still holds.
+  async function placeDemoStudent(studentId: string, targetRoomId: string | undefined) {
+    if (!targetRoomId) return;
+    const current = await prisma.roomOccupancy.findFirst({ where: { userId: studentId, toDate: null } });
+    if (current?.roomId === targetRoomId) return;
+    const occupants = await prisma.roomOccupancy.findMany({
+      where: { roomId: targetRoomId, toDate: null, userId: { not: studentId } },
+    });
+    if (occupants.length >= 2 && current) {
+      await prisma.roomOccupancy.update({ where: { id: occupants[0].id }, data: { roomId: current.roomId } });
+    }
+    await prisma.roomOccupancy.deleteMany({ where: { userId: studentId } });
+    await prisma.roomOccupancy.create({
+      data: { userId: studentId, roomId: targetRoomId, fromDate: current?.fromDate ?? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) },
+    });
+  }
+  await placeDemoStudent(student3.id, roomA302?.id);
+  await placeDemoStudent(student4.id, roomA305?.id);
+
   // 3. Upload real demo assets to Cloudinary
   console.log("\n2. Uploading real demo assets to Cloudinary...");
   const assetsDir = path.resolve(__dirname, "demo-assets");

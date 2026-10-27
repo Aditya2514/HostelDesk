@@ -32,7 +32,7 @@
 | 2. [The idea in one picture](#-the-idea-in-one-picture) | 7. [How the ETA is predicted](#-how-the-eta-is-predicted) | 12. [Deployment](#-deployment) |
 | 3. [See it working](#-see-it-working) | 8. [How completion is proven](#-how-completion-is-proven) | 13. [Demo accounts](#-demo-accounts) |
 | 4. [Who it's for](#-who-its-for) | 9. [Architecture](#-architecture) | 14. [Testing](#-testing) |
-| 5. [Core workflows](#-core-workflows) | 10. [Tech stack and why](#-tech-stack-and-why) · [Getting started](#-getting-started) | 15. [Security](#-security) · [Scalability](#-scalability) · [Honest notes](#-honest-notes-and-limitations) · [AI usage](#-ai-usage) |
+| 5. [Core workflows](#-core-workflows) | 10. [Tech stack and why](#-tech-stack-and-why) · [Getting started](#-getting-started) | 15. [Security](#-security) · [Scalability](#-scalability) · [Honest notes](#-honest-notes-and-limitations) · [Roadmap](#-roadmap-where-ml-and-ai-fit-next) · [AI usage](#-ai-usage) |
 
 ---
 
@@ -458,6 +458,29 @@ Expected load for a whole campus (~2,000 students, ~60 tickets/day) is tiny for 
 - **Photo evidence is strong but not absolute:** a browser can't force a live camera capture on every device, so photos support decisions rather than prove them on their own. The completion code is the primary proof.
 - **Free-tier hosting** may add a short delay on the first request after inactivity; the 5-minute cron keeps it warm.
 - **Screenshots and the tour are from a local build** on seeded data, not from the deployed site. Diagram sources live in `docs/diagrams/src`.
+
+## 🔭 Roadmap: where ML and AI fit next
+
+HostelDesk v1.0.0 deliberately runs on **transparent rules and one explainable formula**, with no machine learning at runtime. The ideas below are **planned next steps, not implemented in this release**. Each one targets a real limitation of the current version, and they were left out because of time and, for several, because a model needs real usage data that a new system doesn't have yet.
+
+| # | Planned idea | Limitation of v1.0.0 it addresses | Approach |
+|---|---|---|---|
+| 1 | **Learned duration prediction** | The estimate blends the category default with the median of similar jobs; it can't pick up richer patterns, and the history is synthetic | Quantile regression or gradient-boosted trees on real completed tickets (category, block and floor, time of day, weekday, number of similar jobs), predicting the P50 and P80 range. The current formula stays as the baseline |
+| 2 | **Photo verification** | Photo evidence is strong but not absolute | A vision model compares before and after photos and flags unrelated, blurry or reused images (perceptual hashing across tickets). It only **flags for the warden**; it never rejects a job on its own |
+| 3 | **Semantic duplicate detection** | Duplicates are caught by rules (same room, or the same floor and category), so differently worded reports of one problem slip through | Text embeddings of descriptions to suggest "this looks like an existing report, join it?" |
+| 4 | **Category and urgency suggestions** | A wrong category sends a ticket to the wrong trade with the wrong deadline | A classifier suggests a category from the description and photo; the student confirms. Priority rules stay category-based |
+| 5 | **Dispute summaries for wardens** | Wardens read photos, timestamps and the timeline by hand | A language model writes a neutral summary of the evidence. **The decision stays human**, and the dispute-always-wins rule is unchanged |
+| 6 | **Preventive maintenance** | Repeat-problem rooms are only visible after the problems have happened | Failure-rate models on room and fixture history, so likely repeat failures become planned jobs |
+| 7 | **Demand and shift forecasting** | Shift schedules are set by hand | Forecast tickets per trade and day (for example plumbing spikes in the monsoon) to suggest shift changes to the admin |
+| 8 | **Voice and multilingual complaints** | Complaints are typed, in English | Speech-to-text and translation, so a student can report a problem in their own language |
+
+**Principles any of these must follow**
+
+- **Beat the baseline first.** A model ships only if it reduces prediction error, measured in working minutes, against the current formula on real data.
+- **Humans decide.** AI suggests or flags. Students and wardens make the calls, and the dispute-always-wins rule does not change.
+- **Stay explainable.** The student keeps seeing *why* an estimate or suggestion was made, as the "Why this estimate?" panel does today.
+- **Real data before ML.** Synthetic history can test the plumbing but can't validate a model, so models wait for real usage data.
+- **Privacy.** Room photos are sensitive, so any vision work needs consent and a retention limit first.
 
 ## 🤖 AI usage
 

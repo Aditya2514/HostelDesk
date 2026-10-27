@@ -188,7 +188,7 @@ def _node(self, x, y, w, h, color, label, size=15, spot=None):
     self.rise(_m)
     if spot: self.spot(x, y, w, h, color, *spot, r=12)
 
-def _entity(self, x, y, w, color, title, fields, note=None):
+def _entity(self, x, y, w, color, title, fields, note=None, spot=None):
     """Entity card: header + monospace-ish field rows. Returns height."""
     _m = self.mark()
     acc, dark = P[color]
@@ -209,6 +209,7 @@ def _entity(self, x, y, w, color, title, fields, note=None):
     if note:
         self.text(x + 16, y + h - 12, note, 12.5, "#94a3b8")
     self.rise(_m)
+    if spot: self.spot(x, y, w, h, color, *spot, r=12)
     return h
 
 def _dot(self, x, y, r=7, fill="#94a3b8"):

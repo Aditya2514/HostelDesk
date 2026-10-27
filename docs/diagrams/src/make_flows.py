@@ -241,23 +241,25 @@ def lifecycle():
 def datamodel():
     s = Svg(1200, 1000, "Data model", "Entity overview: blocks, rooms, dated occupancy, users, staff shifts, notifications, categories, tickets and their events, photos, followers, disputes and predictions.")
     s.flow = False
+    PER = 15.0
+    sp = lambda t, d=1.6: (t, d, PER)
     s.heading("Data model (simplified)", "Occupancy has from/to dates, so 'who lived in A-301 on 12 Oct' is a query.")
     s.text(40, 118, "PEOPLE AND PLACES", 13, "#64748b", 800, spacing=2.2)
-    s.entity(40, 130, 150, "slate", "BLOCK", [("name", "A|B|C")])
-    s.entity(265, 130, 185, "slate", "ROOM", [("blockId", "FK"), ("floor", "int"), ("number", "text")])
-    s.entity(525, 130, 250, "sky", "ROOM_OCCUPANCY", [("userId", "FK"), ("roomId", "FK"), ("fromDate", "date"), ("toDate", "null = current")])
-    s.entity(850, 130, 310, "green", "USER", [("role", "STUDENT | STAFF | …"), ("trade", "staff only"), ("blockId", "wardens, staff"), ("isActive", "bool")])
-    s.arrow([(190, 180), (265, 180)], label="contains", lpos=(228, 172)); s.arrow([(450, 180), (525, 180)], label="holds", lpos=(488, 172)); s.arrow([(850, 180), (775, 180)], label="lives in", lpos=(812, 172))
+    s.entity(40, 130, 150, "slate", "BLOCK", [("name", "A|B|C")], spot=sp(0))
+    s.entity(265, 130, 185, "slate", "ROOM", [("blockId", "FK"), ("floor", "int"), ("number", "text")], spot=sp(1.5))
+    s.entity(525, 130, 250, "sky", "ROOM_OCCUPANCY", [("userId", "FK"), ("roomId", "FK"), ("fromDate", "date"), ("toDate", "null = current")], spot=sp(3))
+    s.entity(850, 130, 310, "green", "USER", [("role", "STUDENT | STAFF | …"), ("trade", "staff only"), ("blockId", "wardens, staff"), ("isActive", "bool")], spot=sp(4.5))
+    s.arrow([(190, 180), (265, 180)], label="contains", lpos=(228, 172), seq=(0.85, 0.65, PER)); s.arrow([(450, 180), (525, 180)], label="holds", lpos=(488, 172), seq=(2.35, 0.65, PER)); s.arrow([(850, 180), (775, 180)], label="lives in", lpos=(812, 172), seq=(3.85, 0.65, PER))
     s.text(40, 336, "THE TICKET", 13, "#64748b", 800, spacing=2.2)
     s.entity(40, 350, 250, "violet", "CATEGORY", [("trade", ""), ("defaultPriority", ""), ("defaultDurationMin", "int"), ("slaMinutes", "int")])
     th = s.entity(350, 350, 560, "indigo", "TICKET", [("code", "HD-0213"), ("status, priority", "enums"), ("locationType", "ROOM | COMMON_AREA"), ("roomId, blockId, floor", ""),
         ("raisedById, assignedToId", "FK"), ("dueAt", "SLA deadline"), ("etaP50At, etaP80At", "predicted range"), ("completionCode", "never in API responses"),
-        ("codeFailedAttempts, codeBlockedUntil", ""), ("lockedVisitCount, pausedAt", "locked-room flow"), ("escalationLevel, reopenCount", "")])
+        ("codeFailedAttempts, codeBlockedUntil", ""), ("lockedVisitCount, pausedAt", "locked-room flow"), ("escalationLevel, reopenCount", "")], spot=sp(6.4, 2.0))
     s.entity(960, 350, 200, "amber", "STAFF_SHIFT", [("staffId", "FK"), ("weekday", "0-6"), ("startMinute", "540"), ("endMinute", "1080")])
     s.entity(960, 540, 200, "rose", "NOTIFICATION", [("userId", "FK"), ("ticketId", "FK"), ("message", ""), ("readAt", "null = unread")])
-    s.arrow([(290, 450), (350, 450)], label="classifies", lpos=(320, 442)); s.arrow([(400, 254), (400, 350)], label="room tickets", lpos=(470, 306))
-    s.arrow([(880, 278), (880, 350)], label="raises / is assigned", lpos=(960, 316)); s.arrow([(1060, 278), (1060, 350)], label="works", lpos=(1096, 316))
-    s.arrow([(910, 630), (960, 630)], label="about", lpos=(935, 622))
+    s.arrow([(290, 450), (350, 450)], label="classifies", lpos=(320, 442), seq=(5.7, 0.65, PER)); s.arrow([(400, 254), (400, 350)], label="room tickets", lpos=(470, 306), seq=(5.6, 0.75, PER))
+    s.arrow([(880, 278), (880, 350)], label="raises / is assigned", lpos=(960, 316), seq=(5.6, 0.75, PER)); s.arrow([(1060, 278), (1060, 350)], label="works", lpos=(1096, 316), flow=True)
+    s.arrow([(910, 630), (960, 630)], label="about", lpos=(935, 622), flow=True)
     ty = 350 + th
     s.text(40, ty + 54, "WHAT HAPPENS TO A TICKET", 13, "#64748b", 800, spacing=2.2)
     sats = [("slate", "TICKET_EVENT", [("type", "enum"), ("fromStatus → toStatus", ""), ("actorId", "FK"), ("note", "")], "timeline of every change", "timeline"),
@@ -270,8 +272,9 @@ def datamodel():
     s.o.append(f'<path d="M{40+sw/2},{busy} L{40+4*(sw+sg)+sw/2},{busy}" fill="none" stroke="#94a3b8" stroke-width="2.3"/>')
     for i, (c, t, fl, note, lab) in enumerate(sats):
         x = 40 + i * (sw + sg)
-        s.arrow([(x + sw/2, busy), (x + sw/2, busy + 34)], label=lab, lpos=(x + sw/2 + 54, busy + 22))
-        s.entity(x, busy + 34, sw, c, t, fl, note)
+        t0 = 8.6 + i * 1.2
+        s.arrow([(x + sw/2, busy), (x + sw/2, busy + 34)], label=lab, lpos=(x + sw/2 + 54, busy + 22), seq=(t0 - 0.6, 0.55, PER))
+        s.entity(x, busy + 34, sw, c, t, fl, note, spot=sp(t0, 1.2))
     s.save(OUT / "data-model.svg")
 
 journey(); eta(); locked(); escalation(); arch(); lifecycle(); datamodel()

@@ -382,14 +382,14 @@ Open **http://localhost:5173** and use the demo account buttons on the login scr
 
 | Component | URL |
 |---|---|
-| **Live app** | `<VERCEL_URL>` |
+| **Live app** | <https://hostel-desk-three.vercel.app> |
 | API (direct) | <https://hosteldesk-uxsm.onrender.com> |
 | Scheduled jobs | cron-job.org → `POST https://hosteldesk-uxsm.onrender.com/api/jobs/tick` every 5 minutes (also keeps the free instance awake) |
 
 Step-by-step instructions (Neon branches, Render build command, Vercel rewrite, cron, seeding production) are in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. After deploying, verify the live site with:
 
 ```bash
-cd server && npm run smoke:prod -- --base=<VERCEL_URL>
+cd server && npm run smoke:prod -- --base=https://hostel-desk-three.vercel.app
 ```
 
 ## 👤 Demo accounts

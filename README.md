@@ -461,7 +461,15 @@ Expected load for a whole campus (~2,000 students, ~60 tickets/day) is tiny for 
 
 ## 🔭 Roadmap: where ML and AI fit next
 
-HostelDesk v1.0.0 deliberately runs on **transparent rules and one explainable formula**, with no machine learning at runtime. The ideas below are **planned next steps, not implemented in this release**. Each one targets a real limitation of the current version, and they were left out because of time and, for several, because a model needs real usage data that a new system doesn't have yet.
+> **Status: planned, not built.** HostelDesk v1.0.0 deliberately runs on **transparent rules and one explainable formula**, with no machine learning at runtime. The ideas below are the next steps. They were left out because of time and, for several, because a model needs real usage data that a new system doesn't have yet.
+
+### Where each idea plugs in
+
+<div align="center">
+<img src="docs/assets/roadmap-map.svg" alt="The ticket journey (raise, route and predict, fix, prove, confirm or dispute, learn and report) with the eight planned ML and AI ideas attached to the stage each would improve" width="100%"/>
+</div>
+
+### The eight ideas
 
 | # | Planned idea | Limitation of v1.0.0 it addresses | Approach |
 |---|---|---|---|
@@ -474,7 +482,19 @@ HostelDesk v1.0.0 deliberately runs on **transparent rules and one explainable f
 | 7 | **Demand and shift forecasting** | Shift schedules are set by hand | Forecast tickets per trade and day (for example plumbing spikes in the monsoon) to suggest shift changes to the admin |
 | 8 | **Voice and multilingual complaints** | Complaints are typed, in English | Speech-to-text and translation, so a student can report a problem in their own language |
 
-**Principles any of these must follow**
+### What could start sooner, and what waits
+
+<div align="center">
+<img src="docs/assets/roadmap-phases.svg" alt="The eight ideas grouped into: sooner (pretrained models, no history needed), needs real usage data, and needs privacy care" width="100%"/>
+</div>
+
+### How a model earns its place
+
+<div align="center">
+<img src="docs/assets/roadmap-gate.svg" alt="Flowchart: collect real data, train a candidate, backtest against today's formula in working minutes, if it beats the baseline run in shadow mode then release behind a flag, otherwise keep the formula. Once live, every AI output is suggested, explained, decided by a person and logged" width="100%"/>
+</div>
+
+**The principles behind that flow**
 
 - **Beat the baseline first.** A model ships only if it reduces prediction error, measured in working minutes, against the current formula on real data.
 - **Humans decide.** AI suggests or flags. Students and wardens make the calls, and the dispute-always-wins rule does not change.

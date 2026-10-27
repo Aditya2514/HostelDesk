@@ -112,12 +112,13 @@ class Svg:
         self.o.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="18" fill="#0a1022" stroke="#1e293b" stroke-width="1.5"/>')
         self.text(x + 24, y + 30, label, 13, col, 800, spacing=2.2)
 
-    def card(self, x, y, w, h, color, head=None, body=None, num=None, size=15, shadow=True, align="left", body_color="#cbd5e1", bar=True, spot=None, reveal=True):
+    def card(self, x, y, w, h, color, head=None, body=None, num=None, size=15, shadow=True, align="left", body_color="#cbd5e1", bar=True, spot=None, reveal=True, dash=False):
         _m = self.mark()
         acc, dark = P[color]
         wrap_w = max(10, int((w - (88 if num else 44)) / (size * 0.545)))
         g = '<g filter="url(#sh)">' if shadow else '<g>'
-        self.o.append(f'{g}<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="{CARD}" stroke="{acc}" stroke-opacity="0.55" stroke-width="1.5"/></g>')
+        da = ' stroke-dasharray="7 6"' if dash else ''
+        self.o.append(f'{g}<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="{CARD}" stroke="{acc}" stroke-opacity="{0.8 if dash else 0.55}" stroke-width="1.5"{da}/></g>')
         if bar:
             self.o.append(f'<rect x="{x}" y="{y+14}" width="5" height="{h-28}" rx="2.5" fill="{acc}"/>')
         tx = x + 24
